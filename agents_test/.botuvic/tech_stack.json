@@ -1,0 +1,28 @@
+{
+  "decision_locked": true,
+  "user_confirmed": true,
+  "ready_for_design_agent": true,
+  "tech_stack": {
+    "frontend": {
+      "framework": "Next.js"
+    },
+    "backend": {
+      "framework": "Node.js + Fastify"
+    },
+    "database": {
+      "choice": "PostgreSQL + Redis"
+    },
+    "realtime": {
+      "transport": "WebSockets"
+    },
+    "desktop": {
+      "framework": "Tauri"
+    },
+    "mobile": {
+      "framework": "React Native"
+    },
+    "cli": {
+      "language": "Python"
+    }
+  }
+}

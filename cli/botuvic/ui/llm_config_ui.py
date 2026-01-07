@@ -1,178 +1,173 @@
-"""
-LLM configuration interface.
-"""
-
+import questionary
+from questionary import Style
 from rich.console import Console
 from rich.table import Table
-from rich.prompt import Prompt, Confirm
+from rich.prompt import Prompt
 from rich.panel import Panel
 
 console = Console()
 
+# Top 25+ LLM Providers
+PROVIDERS = [
+    "BOTUVIC (Default - Free)", "OpenAI", "DeepSeek", "Anthropic (Claude)", "Google (Gemini)",
+    "Meta (Llama 3.1/3.2)", "Mistral AI", "Groq", "Together AI",
+    "Perplexity", "Cohere", "Fireworks AI", "Anyscale",
+    "OpenRouter", "OctoML", "Replicate", "Azure OpenAI",
+    "AWS Bedrock", "Hugging Face", "X.AI (Grok)", "Ollama (Local)",
+    "DeepInfra", "AI21 Labs", "Lepton AI", "Lambda Labs", "Novita AI", "Friendly AI"
+]
+
 def configure_llm_ui(llm_manager):
     """
-    Interactive LLM configuration.
-    
-    Args:
-        llm_manager: LLMManager instance
+    Detailed LLM Configuration with arrow-key navigation.
     """
-    console.print("\n[bold cyan]🤖 LLM Configuration[/bold cyan]\n")
+    console.print("\n[bold #A855F7]🤖 LLM Configuration[/bold #A855F7]\n")
     
-    # Step 1: Discover models
-    console.print("[dim]Searching online for latest models...[/dim]")
-    all_models = llm_manager.discover_models()
-    console.print(f"[green]✓[/green] Found models from {len(all_models)} providers\n")
+    # Custom style for questionary - Purple monochrome
+    style = Style([
+        ('qmark', 'fg:#A855F7 bold'),
+        ('question', 'bold'),
+        ('answer', 'fg:#A855F7 bold'),
+        ('pointer', 'fg:#A855F7 bold'),
+        ('highlighted', 'fg:#A855F7 bold'),
+        ('selected', 'fg:#C084FC'),
+    ])
+
+    # Get current config to show at top
+    current_config = llm_manager.get_current_config()
+    active_provider = current_config.get("provider")
     
-    # Step 2: Select provider
-    providers = list(all_models.keys())
-    if not providers:
-        console.print("[yellow]No providers available. Please check your internet connection.[/yellow]")
-        return
+    # Prepare provider choices
+    provider_choices = []
+    if active_provider:
+        provider_choices.append(questionary.Choice(
+            title=f"⭐ Current: {active_provider}", 
+            value=active_provider
+        ))
+        provider_choices.append(questionary.Separator("────────────────────────"))
+
+    # Add all providers (unique and cleaned)
+    seen = {active_provider} if active_provider else set()
+    for p in PROVIDERS:
+        name = p.split(" (")[0].split(" ")[0] # Get base name for matching
+        if name not in seen:
+            provider_choices.append(questionary.Choice(title=p, value=name))
+            seen.add(name)
+
+    # 1. Select Provider
+    provider = questionary.select(
+        "Select an LLM Provider:",
+        choices=provider_choices,
+        style=style,
+        use_shortcuts=True
+    ).ask()
+
+    if not provider: return
+
+    # Special handling for BOTUVIC - skip model selection and API key
+    if provider == "BOTUVIC":
+        try:
+            from botuvic.agent.llm.adapters.botuvic_adapter import BotuvicAdapter
+            llm_manager.configure_llm(
+                provider="BOTUVIC",
+                model="botuvic-ai",
+                api_key="internal"  # Not used, internal key is used
+            )
+            console.print(f"\n[green]✅ BOTUVIC AI configured![/green]")
+            console.print(f"[dim]Using default free AI (no API key required)[/dim]\n")
+            return
+        except Exception as e:
+            console.print(f"\n[red]❌ Configuration failed: {e}[/red]")
+            return
+
+    # 2. Fetch/Select Model
+    with console.status(f"[#A855F7]Fetching models for {provider}...[/#A855F7]"):
+        models = llm_manager.get_models_for_provider(provider)
     
-    provider = select_provider(providers)
-    if not provider:
-        return
+    # If discovery failed, try to get hardcoded models from the adapter itself
+    if not models:
+        adapter_class = llm_manager.adapter_registry.get(provider)
+        if adapter_class:
+            try:
+                # Create a temporary adapter with no key just to get model list
+                temp_adapter = adapter_class(api_key="list_only")
+                models = temp_adapter.get_available_models()
+            except:
+                pass
+
+    if not models:
+        console.print(f"[yellow]No models found for {provider}. Using defaults.[/yellow]")
+        models = [{"id": "latest", "name": "Latest Available"}]
+        
+    # Filter out models that might be empty or invalid
+    models = [m for m in models if m and (m.get('id') or m.get('name'))]
+
+    model_choices = [
+        questionary.Choice(title=f"{m.get('name', m['id'])}", value=m) 
+        for m in models[:25] # Limit to top 25
+    ]
+
+    selected_model = questionary.select(
+        f"Select a {provider} Model:",
+        choices=model_choices,
+        style=style
+    ).ask()
+
+    if not selected_model: return
+
+    # 3. API Key (Use Global Storage)
+    keys_store = llm_manager.storage.load_global("api_keys") or {}
+    existing_key = keys_store.get(provider)
     
-    # Step 3: Select model
-    models = all_models[provider]
-    model = select_model(provider, models)
-    if not model:
-        return
+    instruction = "(Input is hidden for security. Just paste and press Enter)"
+    if existing_key:
+        instruction = f"(Press Enter to keep existing key, or paste a new one - input is hidden)"
     
-    # Step 4: API Key
-    api_key = Prompt.ask(f"\n{provider} API key", password=True)
+    api_key = questionary.password(
+        f"Enter {provider} API Key:",
+        instruction=instruction,
+        style=style
+    ).ask()
     
-    if not api_key:
-        console.print("[red]API key is required[/red]")
-        return
+    # Strip whitespace if key was provided
+    if api_key:
+        api_key = api_key.strip()
     
-    # Step 5: Settings
-    settings_choice = Prompt.ask(
-        "\nSettings",
-        choices=["default", "advanced"],
-        default="default"
-    )
-    
-    if settings_choice == "default":
-        settings = get_default_settings()
+    # If they pressed enter without typing anything and we have an existing key
+    if not api_key and existing_key:
+        final_key = existing_key
+    elif api_key:
+        final_key = api_key
     else:
-        settings = get_advanced_settings()
-    
-    # Step 6: Configure
+        console.print("[red]API key is required for this provider.[/red]")
+        return
+        
+    # Save to global storage
+    keys_store[provider] = final_key
+    try:
+        llm_manager.storage.save_global("api_keys", keys_store)
+    except OSError as e:
+        if "No space left on device" in str(e):
+            console.print("\n[bold red]❌ Disk Full Error![/bold red]")
+            console.print("Your computer has no space left. Please delete some files first.\n")
+            return
+        raise e
+
+    # 4. Finalize Configuration
     try:
         llm_manager.configure_llm(
             provider=provider,
-            model=model["id"],
-            api_key=api_key,
-            **settings
+            model=selected_model["id"],
+            api_key=final_key
         )
         
-        console.print(f"\n[green]✅ Configured {provider} - {model['name']}[/green]")
-        show_config_summary(provider, model, settings)
+        console.print(f"\n[green]✅ Successfully configured {provider}![/green]")
+        console.print(f"[dim]Model: {selected_model.get('name', selected_model['id'])}[/dim]")
+        
+        # Obfuscated key preview
+        masked_key = final_key[:4] + "*" * (len(final_key) - 8) + final_key[-4:] if len(final_key) > 8 else "****"
+        console.print(f"[dim]API Key: {masked_key}[/dim]\n")
         
     except Exception as e:
         console.print(f"\n[red]❌ Configuration failed: {e}[/red]")
-
-def select_provider(providers):
-    """Select LLM provider."""
-    console.print("\n[bold]Available Providers:[/bold]\n")
-    
-    for i, provider in enumerate(providers, 1):
-        console.print(f"  {i}. {provider}")
-    
-    console.print()
-    
-    try:
-        choice = Prompt.ask("Select provider", default="1")
-        idx = int(choice) - 1
-        if 0 <= idx < len(providers):
-            return providers[idx]
-    except (ValueError, IndexError):
-        pass
-    
-    return None
-
-def select_model(provider, models):
-    """Select model from provider."""
-    if not models:
-        console.print(f"[yellow]No models found for {provider}[/yellow]")
-        return None
-    
-    console.print(f"\n[bold]{provider} Models:[/bold]\n")
-    
-    for i, model in enumerate(models[:20], 1):  # Limit to 20
-        name = model.get('name', model.get('id', 'Unknown'))
-        desc = model.get('description', '')
-        if desc:
-            console.print(f"  {i}. {name} - {desc[:60]}")
-        else:
-            console.print(f"  {i}. {name}")
-    
-    console.print()
-    
-    try:
-        choice = Prompt.ask("Select model", default="1")
-        idx = int(choice) - 1
-        if 0 <= idx < len(models):
-            return models[idx]
-    except (ValueError, IndexError):
-        pass
-    
-    return None
-
-def get_default_settings():
-    """Get default LLM settings."""
-    return {
-        "temperature": 0.7,
-        "max_tokens": 4000,
-        "top_p": 1.0,
-        "frequency_penalty": 0.0,
-        "presence_penalty": 0.0
-    }
-
-def get_advanced_settings():
-    """Get advanced LLM settings with user input."""
-    console.print("\n[bold]Advanced Settings[/bold]\n")
-    
-    try:
-        temp_str = Prompt.ask("Temperature (0.0-2.0)", default="0.7")
-        temperature = float(temp_str)
-        
-        tokens_str = Prompt.ask("Max tokens (1-128000)", default="4000")
-        max_tokens = int(tokens_str)
-        
-        top_p_str = Prompt.ask("Top-p (0.0-1.0)", default="1.0")
-        top_p = float(top_p_str)
-        
-        freq_str = Prompt.ask("Frequency penalty (-2.0 to 2.0)", default="0.0")
-        frequency_penalty = float(freq_str)
-        
-        pres_str = Prompt.ask("Presence penalty (-2.0 to 2.0)", default="0.0")
-        presence_penalty = float(pres_str)
-        
-        return {
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "top_p": top_p,
-            "frequency_penalty": frequency_penalty,
-            "presence_penalty": presence_penalty
-        }
-    except ValueError:
-        console.print("[red]Invalid input. Using defaults.[/red]")
-        return get_default_settings()
-
-def show_config_summary(provider, model, settings):
-    """Show configuration summary."""
-    table = Table(title="LLM Configuration", show_header=False, box=None)
-    table.add_column("Setting", style="cyan")
-    table.add_column("Value", style="green")
-    
-    table.add_row("Provider", provider)
-    table.add_row("Model", model.get("name", model.get("id", "Unknown")))
-    table.add_row("Temperature", str(settings["temperature"]))
-    table.add_row("Max Tokens", str(settings["max_tokens"]))
-    table.add_row("Top-p", str(settings["top_p"]))
-    
-    console.print()
-    console.print(table)
 

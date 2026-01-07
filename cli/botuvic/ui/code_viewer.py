@@ -17,7 +17,7 @@ class CodeChangeViewer:
     
     def show_change(self, change, permission_manager):
         """
-        Show a code change and ask for approval.
+        Show a code change and get approval via permission system.
         
         Args:
             change: Dict with file, old_content, new_content
@@ -31,19 +31,8 @@ class CodeChangeViewer:
         new_content = change["new_content"]
         change_type = change.get("type", "edit")  # create, edit, delete
         
-        # Check permissions
-        if change_type == "create":
-            if not permission_manager.check_permission("file_create", f"Create {file_path}"):
-                return False
-        elif change_type == "delete":
-            if not permission_manager.check_permission("file_delete", f"Delete {file_path}"):
-                return False
-        else:
-            if not permission_manager.check_permission("file_write", f"Edit {file_path}"):
-                return False
-        
-        # Show change
-        console.print(f"\n[bold cyan]📝 Code Change: {file_path}[/bold cyan]")
+        # Show change UI first so user knows what they are approving
+        console.print(f"\n[bold #A855F7]📝 Code Change: {file_path}[/bold #A855F7]")
         console.print(f"[dim]Type: {change_type}[/dim]\n")
         
         if change_type == "create":
@@ -57,10 +46,14 @@ class CodeChangeViewer:
         else:
             # Show diff
             self.show_diff(old_content, new_content, file_path)
-        
-        # Ask for approval
-        console.print()
-        return Confirm.ask("[cyan]Apply this change?[/cyan]")
+            
+        # Check permissions (This serves as the only confirmation)
+        if change_type == "create":
+            return permission_manager.check_permission("file_create", f"Create {file_path}")
+        elif change_type == "delete":
+            return permission_manager.check_permission("file_delete", f"Delete {file_path}")
+        else:
+            return permission_manager.check_permission("file_write", f"Edit {file_path}")
     
     def show_diff(self, old_content, new_content, filename):
         """Show unified diff."""
@@ -88,7 +81,7 @@ class CodeChangeViewer:
             elif line.startswith('-'):
                 console.print(f"[red]{line}[/red]")
             elif line.startswith('@@'):
-                console.print(f"[cyan]{line}[/cyan]")
+                console.print(f"[#A855F7]{line}[/#A855F7]")
             else:
                 console.print(f"[dim]{line}[/dim]")
     

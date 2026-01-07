@@ -49,9 +49,9 @@ class ReportGenerator:
         lines = []
         
         # Header
-        lines.append(f"# {roadmap['project_name']} - Project Plan")
+        lines.append(f"# {roadmap.get('project_name', 'Project')} - Project Plan")
         lines.append(f"\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-        lines.append(f"Total Phases: {roadmap['total_phases']}")
+        lines.append(f"Total Phases: {roadmap.get('total_phases', len(roadmap.get('phases', [])))}")
         lines.append(f"Estimated Duration: {roadmap.get('estimated_total_days', 'N/A')} days")
         
         # Tech Stack
@@ -96,7 +96,7 @@ class ReportGenerator:
         lines = []
         
         # Header
-        lines.append(f"# {roadmap['project_name']} - TODO List")
+        lines.append(f"# {roadmap.get('project_name', 'Project')} - TODO List")
         lines.append(f"\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         lines.append(f"Overall Progress: {progress['overall_progress']}%")
         lines.append(f"Completed: {progress['completed_tasks']}/{progress['total_tasks']} tasks")
@@ -181,7 +181,7 @@ class ReportGenerator:
         lines = []
         
         # Header
-        lines.append(f"# {roadmap['project_name'] if roadmap else 'Project'} - Progress Report")
+        lines.append(f"# {roadmap.get('project_name', 'Project') if roadmap else 'Project'} - Progress Report")
         lines.append(f"\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         
         # Overall Stats

@@ -18,7 +18,7 @@ class ProgressTracker:
             roadmap: Roadmap dict with phases and tasks
         """
         progress = {
-            "project_name": roadmap["project_name"],
+            "project_name": roadmap.get("project_name", "Project"),
             "current_phase": 1,
             "phases": [],
             "overall_progress": 0,

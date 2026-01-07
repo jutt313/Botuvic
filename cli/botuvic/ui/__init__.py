@@ -3,7 +3,7 @@
 from .header import display_header
 from .auth import authenticate_user
 from .project_selector import select_project
-from .menu import show_command_menu, get_command_help
+from .menu import show_command_menu
 from .llm_config_ui import configure_llm_ui
 from .permissions import PermissionManager
 from .code_viewer import CodeChangeViewer
@@ -14,7 +14,6 @@ __all__ = [
     "authenticate_user",
     "select_project",
     "show_command_menu",
-    "get_command_help",
     "configure_llm_ui",
     "PermissionManager",
     "CodeChangeViewer",

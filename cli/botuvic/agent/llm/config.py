@@ -45,6 +45,22 @@ class LLMConfig:
             "supports_function_calling": False,
             "supports_streaming": True,
             "default_model": "llama3"
+        },
+        "DeepSeek": {
+            "supports_function_calling": True,
+            "supports_streaming": True,
+            "default_model": "deepseek-v3.2",
+            "context_window": 128000
+        },
+        "Groq": {
+            "supports_function_calling": True,
+            "supports_streaming": True,
+            "default_model": "llama3-70b-8192"
+        },
+        "Mistral": {
+            "supports_function_calling": True,
+            "supports_streaming": True,
+            "default_model": "mistral-large-latest"
         }
     }
     

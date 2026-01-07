@@ -23,37 +23,67 @@ class SearchEngine:
     """Web search capability using Tavily API."""
     
     def __init__(self):
-        self.api_key = os.getenv("TAVILY_API_KEY")
-        self.api_url = "https://api.tavily.com/search"
+        self.tavily_key = os.getenv("TAVILY_API_KEY")
+        self.google_key = os.getenv("GOOGLE_SEARCH_API_KEY")
+        self.google_cx = os.getenv("GOOGLE_SEARCH_CX")
+        
+        self.tavily_url = "https://api.tavily.com/search"
+        self.google_url = "https://www.googleapis.com/customsearch/v1"
     
     def search(self, query, max_results=5):
         """
-        Search the web.
-        
-        Args:
-            query: Search query string
-            max_results: Maximum number of results
-            
-        Returns:
-            List of search results with title, url, content
+        Search the web using Google (Primary) or Tavily (Fallback).
         """
-        if not self.api_key:
-            return {"error": "TAVILY_API_KEY not set. Web search disabled."}
-        
+        # Try Google Search first
+        if self.google_key and self.google_cx:
+            return self._google_search(query, max_results)
+            
+        # Fallback to Tavily
+        if self.tavily_key:
+            return self._tavily_search(query, max_results)
+            
+        return {"error": "No search API keys set (GOOGLE_SEARCH_API_KEY or TAVILY_API_KEY). Search disabled."}
+
+    def _google_search(self, query, max_results=5):
+        try:
+            response = requests.get(
+                self.google_url,
+                params={
+                    "key": self.google_key,
+                    "cx": self.google_cx,
+                    "q": query,
+                    "num": max_results
+                },
+                timeout=10
+            )
+            data = response.json()
+            
+            if "error" in data:
+                return {"error": f"Google Search Error: {data['error'].get('message')}"}
+                
+            results = []
+            for item in data.get("items", []):
+                results.append({
+                    "title": item.get("title"),
+                    "url": item.get("link"),
+                    "content": item.get("snippet")
+                })
+            return {"results": results}
+        except Exception as e:
+            return {"error": f"Google Search Exception: {str(e)}"}
+
+    def _tavily_search(self, query, max_results=5):
         try:
             response = requests.post(
-                self.api_url,
+                self.tavily_url,
                 json={
-                    "api_key": self.api_key,
+                    "api_key": self.tavily_key,
                     "query": query,
                     "max_results": max_results
                 },
                 timeout=10
             )
-            
             data = response.json()
-            
-            # Format results
             results = []
             for item in data.get("results", []):
                 results.append({
@@ -61,9 +91,7 @@ class SearchEngine:
                     "url": item.get("url"),
                     "content": item.get("content")
                 })
-            
             return {"results": results}
-            
         except Exception as e:
-            return {"error": str(e)}
+            return {"error": f"Tavily Search Error: {str(e)}"}
 

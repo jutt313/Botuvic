@@ -11,3 +11,6 @@ ENV/
 *.log
 .DS_Store
 
+# Logs directory (generated at runtime)
+logs/
+

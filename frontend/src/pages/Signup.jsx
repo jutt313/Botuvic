@@ -47,10 +47,8 @@ function Signup() {
           callback.searchParams.set('email', email);
           window.location.href = callback.toString();
         } else {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/f4201013-abc5-489e-9ece-a98ac059c1d2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Signup.jsx:47',message:'Navigating to /',data:{targetPath:'/'},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
-          navigate('/');
+          // Redirect to onboarding after signup
+          navigate('/onboarding');
         }
       }
     } catch (err) {

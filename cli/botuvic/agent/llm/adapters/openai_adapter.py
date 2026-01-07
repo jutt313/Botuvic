@@ -75,7 +75,15 @@ class OpenAIAdapter(BaseLLMAdapter):
             return result
             
         except Exception as e:
-            raise Exception(f"OpenAI API error: {str(e)}")
+            error_msg = str(e)
+            if "401" in error_msg or "Authentication" in error_msg:
+                raise Exception(f"Invalid {self.get_provider_name()} API Key. Please check your key at the provider's dashboard.")
+            elif "402" in error_msg or "insufficient_quota" in error_msg:
+                raise Exception(f"Insufficient balance in your {self.get_provider_name()} account.")
+            elif "429" in error_msg:
+                raise Exception(f"Rate limit exceeded for {self.get_provider_name()}. Please try again in a moment.")
+            else:
+                raise Exception(f"{self.get_provider_name()} API error: {error_msg}")
     
     def get_available_models(self) -> List[Dict[str, Any]]:
         """

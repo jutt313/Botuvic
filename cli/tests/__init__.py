@@ -1,4 +1,0 @@
-"""
-BOTUVIC Agent Tests
-"""
-

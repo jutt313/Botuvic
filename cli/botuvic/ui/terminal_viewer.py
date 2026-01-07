@@ -14,7 +14,7 @@ class TerminalViewer:
     
     def show_command(self, command, permission_manager):
         """
-        Show a terminal command and ask for approval.
+        Show a terminal command and get approval via permission system.
         
         Args:
             command: Dict with command, description
@@ -25,7 +25,6 @@ class TerminalViewer:
         """
         cmd = command["command"]
         description = command.get("description", "")
-        command_type = command.get("type", "general")
         
         # Determine permission type
         if "npm install" in cmd or "pip install" in cmd or "pip3 install" in cmd:
@@ -34,13 +33,9 @@ class TerminalViewer:
             permission_type = "git_operations"
         else:
             permission_type = "terminal_execute"
-        
-        # Check permission
-        if not permission_manager.check_permission(permission_type, cmd):
-            return False
-        
-        # Show command
-        console.print(f"\n[bold cyan]⚡ Terminal Command[/bold cyan]")
+            
+        # Show command UI first so user knows what they are approving
+        console.print(f"\n[bold #A855F7]⚡ Terminal Command[/bold #A855F7]")
         
         if description:
             console.print(f"[dim]{description}[/dim]\n")
@@ -49,7 +44,6 @@ class TerminalViewer:
         syntax = Syntax(cmd, "bash", theme="monokai")
         console.print(Panel(syntax, title="Command"))
         
-        # Ask for approval
-        console.print()
-        return Confirm.ask("[cyan]Execute this command?[/cyan]")
+        # Check permission (This serves as the only confirmation)
+        return permission_manager.check_permission(permission_type, "Execute command shown above")
 

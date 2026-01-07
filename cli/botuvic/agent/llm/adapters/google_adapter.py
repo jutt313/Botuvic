@@ -27,6 +27,80 @@ class GoogleAdapter(BaseLLMAdapter):
     def get_provider_name(self) -> str:
         return "Google"
     
+    def _convert_tools_to_gemini_format(self, tools: List[Dict[str, Any]]) -> List[Any]:
+        """
+        Convert OpenAI-style function tools to Gemini format.
+        
+        Gemini expects tools as FunctionDeclaration objects from genai.protos.
+        """
+        try:
+            # Access protos from the genai module
+            protos = genai.protos
+            
+            type_map = {
+                "string": protos.Type.STRING,
+                "integer": protos.Type.INTEGER,
+                "number": protos.Type.NUMBER,
+                "boolean": protos.Type.BOOLEAN,
+                "array": protos.Type.ARRAY,
+                "object": protos.Type.OBJECT
+            }
+
+            def build_schema(param: Dict[str, Any]) -> protos.Schema:
+                param_type = param.get("type")
+                if not param_type:
+                    param_type = "object" if "properties" in param else "string"
+
+                schema = protos.Schema(
+                    type_=type_map.get(param_type, protos.Type.STRING),
+                    description=param.get("description", "")
+                )
+
+                if param_type == "object" and "properties" in param:
+                    nested_props = {
+                        name: build_schema(nested_param)
+                        for name, nested_param in param["properties"].items()
+                    }
+                    schema.properties = nested_props
+                    if "required" in param:
+                        schema.required = list(param.get("required", []))
+
+                if param_type == "array":
+                    items_param = param.get("items") or {"type": "string"}
+                    schema.items = build_schema(items_param)
+
+                return schema
+
+            gemini_tools = []
+            
+            for tool in tools:
+                if tool.get("type") == "function" and "function" in tool:
+                    func = tool["function"]
+                    params = func.get("parameters", {})
+                    
+                    properties = {}
+                    if "properties" in params:
+                        for name, param in params["properties"].items():
+                            properties[name] = build_schema(param)
+                    
+                    # Create FunctionDeclaration
+                    function_decl = protos.FunctionDeclaration(
+                        name=func.get("name", ""),
+                        description=func.get("description", ""),
+                        parameters=protos.Schema(
+                            type_=protos.Type.OBJECT,
+                            properties=properties,
+                            required=params.get("required", [])
+                        )
+                    )
+                    gemini_tools.append(function_decl)
+            
+            return gemini_tools if gemini_tools else None
+        except (ImportError, AttributeError) as e:
+            # Fallback: if protos not available, return None (tools won't work)
+            # This allows the request to proceed without function calling
+            return None
+    
     def chat(
         self,
         messages: List[Dict[str, str]],
@@ -39,18 +113,29 @@ class GoogleAdapter(BaseLLMAdapter):
         self.validate_settings(temperature, max_tokens)
         
         try:
-            # Configure generation config
+            # Extract tools from kwargs (tools should not be in GenerationConfig)
+            tools = kwargs.pop("tools", None)
+            tool_choice = kwargs.pop("tool_choice", None)
+            
+            # Configure generation config (without tools)
             generation_config = {
                 "temperature": temperature,
                 "max_output_tokens": max_tokens,
-                **kwargs
+                **kwargs  # Remaining kwargs (excluding tools)
             }
             
-            # Get model
-            gemini_model = self.client.GenerativeModel(
-                model_name=model,
-                generation_config=generation_config
-            )
+            # Get model - pass tools to model constructor if provided
+            model_kwargs = {"model_name": model, "generation_config": generation_config}
+            if tools:
+                try:
+                    # Convert OpenAI-style tools to Gemini format
+                    gemini_tools = self._convert_tools_to_gemini_format(tools)
+                    if gemini_tools:
+                        model_kwargs["tools"] = gemini_tools
+                except Exception as e:
+                    # If tool conversion fails, continue without tools
+                    # This prevents the entire request from failing
+                    print(f"⚠️  Warning: Could not convert tools for Gemini: {e}")
             
             # Format messages for Gemini
             # Gemini uses a different format - convert messages to chat history
@@ -67,6 +152,13 @@ class GoogleAdapter(BaseLLMAdapter):
                     chat_history.append({"role": "user", "parts": [content]})
                 elif role == "assistant":
                     chat_history.append({"role": "model", "parts": [content]})
+
+            # Pass system instruction if found
+            if system_instruction:
+                model_kwargs["system_instruction"] = system_instruction
+            
+            gemini_model = self.client.GenerativeModel(**model_kwargs)
+
             
             # Start chat
             chat = gemini_model.start_chat(history=chat_history[:-1] if len(chat_history) > 1 else [])
@@ -78,10 +170,11 @@ class GoogleAdapter(BaseLLMAdapter):
             # Extract text
             content = response.text if hasattr(response, 'text') else str(response)
             
-            # Get usage info if available
+            # Get usage info if available (usage_metadata is a protobuf message, not a dict)
+            usage_metadata = getattr(response, 'usage_metadata', None)
             usage = {
-                "prompt_tokens": getattr(response, 'usage_metadata', {}).get('prompt_token_count', 0) if hasattr(response, 'usage_metadata') else 0,
-                "completion_tokens": getattr(response, 'usage_metadata', {}).get('candidates_token_count', 0) if hasattr(response, 'usage_metadata') else 0,
+                "prompt_tokens": getattr(usage_metadata, 'prompt_token_count', 0) if usage_metadata else 0,
+                "completion_tokens": getattr(usage_metadata, 'candidates_token_count', 0) if usage_metadata else 0,
                 "total_tokens": 0
             }
             usage["total_tokens"] = usage["prompt_tokens"] + usage["completion_tokens"]
@@ -142,4 +235,3 @@ class GoogleAdapter(BaseLLMAdapter):
                     "context_window": 30720
                 }
             ]
-

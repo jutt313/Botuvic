@@ -3,20 +3,19 @@ Terminal UI header with ASCII logo, tagline, and description.
 """
 
 from rich.console import Console
-from rich.panel import Panel
 from rich.text import Text
 from rich.align import Align
 
 
-def display_header():
+def display_header(project_name=None, project_path=None):
     """Display BOTUVIC header with logo, tagline, and description."""
     console = Console()
     
-    # Colors from your palette
+    # Colors from purple monochrome palette
     PRIMARY = "#A855F7"      # Purple
-    SECONDARY = "#06B6D4"    # Cyan
-    TEXT = "#F1F5F9"         # Off White
-    ACCENT = "#10B981"       # Green
+    SECONDARY = "#C084FC"    # Light Purple
+    TEXT = "#FFFFFF"         # White
+    ACCENT = "#10B981"       # Green (for success)
     
     # ASCII Logo
     logo = """
@@ -48,19 +47,20 @@ def display_header():
     header_content.append("\n\n")
     header_content.append(description)
     
-    # Create panel
-    panel = Panel(
-        Align.center(header_content),
-        border_style=PRIMARY,
-        padding=(1, 2)
-    )
-    
-    console.print(panel)
+    # Add project info if provided
+    if project_name and project_path:
+        header_content.append("\n")
+        project_info = Text()
+        project_info.append(f"Project: ", style="dim")
+        project_info.append(f"{project_name}", style=f"bold {ACCENT}")
+        project_info.append(f"  •  ", style="dim")
+        project_info.append(f"Directory: ", style="dim")
+        project_info.append(f"{project_path}", style=f"{TEXT}")
+        header_content.append(project_info)
+
+    # Print content without border
+    console.print(Align.center(header_content))
     console.print()  # Empty line
-    
-    # Input prompt
-    console.print(f"[{ACCENT}]Type your message or press[/{ACCENT}] [{SECONDARY}]/[/{SECONDARY}] [{ACCENT}]for commands[/{ACCENT}]")
-    console.print()
 
 
 # Example usage

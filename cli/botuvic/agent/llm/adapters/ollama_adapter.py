@@ -86,21 +86,53 @@ class OllamaAdapter(BaseLLMAdapter):
     
     def get_available_models(self) -> List[Dict[str, Any]]:
         """Get list of locally installed Ollama models."""
+        # Fallback models if Ollama not running or not initialized
+        fallback_models = [
+            {
+                "id": "llama3",
+                "name": "Llama 3",
+                "provider": "Ollama",
+                "description": "Meta's Llama 3 model (requires local installation)"
+            },
+            {
+                "id": "mistral",
+                "name": "Mistral",
+                "provider": "Ollama",
+                "description": "Mistral model (requires local installation)"
+            },
+            {
+                "id": "mixtral",
+                "name": "Mixtral",
+                "provider": "Ollama",
+                "description": "Mixtral model (requires local installation)"
+            },
+            {
+                "id": "codellama",
+                "name": "CodeLlama",
+                "provider": "Ollama",
+                "description": "Code-focused Llama model (requires local installation)"
+            }
+        ]
+
         try:
+            # Check if base_url is set (adapter is initialized)
+            if not hasattr(self, 'base_url'):
+                return fallback_models
+
             response = requests.get(
                 f"{self.base_url}/api/tags",
                 timeout=10
             )
             response.raise_for_status()
-            
+
             data = response.json()
             models = []
-            
+
             for model in data.get("models", []):
                 model_info = model.get("name", "")
                 # Remove tag/version info, keep just model name
                 model_name = model_info.split(":")[0] if ":" in model_info else model_info
-                
+
                 models.append({
                     "id": model_info,  # Keep full name with tag for API calls
                     "name": model_name,
@@ -109,37 +141,12 @@ class OllamaAdapter(BaseLLMAdapter):
                     "modified": model.get("modified_at", ""),
                     "description": f"Local {model_name} model"
                 })
-            
-            return models
-            
+
+            return models if models else fallback_models
+
         except requests.exceptions.ConnectionError:
             # Ollama not running, return common models user might have
-            return [
-                {
-                    "id": "llama3",
-                    "name": "Llama 3",
-                    "provider": "Ollama",
-                    "description": "Meta's Llama 3 model (requires local installation)"
-                },
-                {
-                    "id": "mistral",
-                    "name": "Mistral",
-                    "provider": "Ollama",
-                    "description": "Mistral model (requires local installation)"
-                },
-                {
-                    "id": "mixtral",
-                    "name": "Mixtral",
-                    "provider": "Ollama",
-                    "description": "Mixtral model (requires local installation)"
-                },
-                {
-                    "id": "codellama",
-                    "name": "CodeLlama",
-                    "provider": "Ollama",
-                    "description": "Code-focused Llama model (requires local installation)"
-                }
-            ]
+            return fallback_models
         except Exception as e:
-            return []
+            return fallback_models
 

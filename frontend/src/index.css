@@ -58,3 +58,104 @@
   @apply bg-primary;
 }
 
+/* Dashboard Background - Purple monochrome theme */
+.dashboard-container {
+  min-height: 100vh;
+  background: linear-gradient(
+    to top,
+    #000000 0%,
+    #000000 30%,
+    #0A0514 50%,
+    #120A1F 70%,
+    #1A0F2E 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle purple glow effect at top */
+.dashboard-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    ellipse at 50% 20%,
+    rgba(168, 85, 247, 0.08) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.dashboard-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+  padding: 10px 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.dashboard-welcome {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 2.0rem;
+  font-weight: 600;
+}
+
+.welcome-text {
+  color: #FFFFFF;
+}
+
+.username-gradient {
+  background: linear-gradient(135deg, #A855F7 0%, #C084FC 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.icon-button:active {
+  transform: translateY(0);
+}
+
+.dashboard-header-actions .icon-button:last-child {
+  margin-right: 10px;
+}
+

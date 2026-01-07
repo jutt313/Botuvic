@@ -9,6 +9,29 @@ from .adapters.openai_adapter import OpenAIAdapter
 from .adapters.anthropic_adapter import AnthropicAdapter
 from .adapters.ollama_adapter import OllamaAdapter
 from .adapters.google_adapter import GoogleAdapter
+from .adapters.deepseek_adapter import DeepSeekAdapter
+from .adapters.groq_adapter import GroqAdapter
+from .adapters.mistral_adapter import MistralAdapter
+from .adapters.together_adapter import TogetherAdapter
+from .adapters.fireworks_adapter import FireworksAdapter
+from .adapters.openrouter_adapter import OpenRouterAdapter
+from .adapters.deepinfra_adapter import DeepInfraAdapter
+from .adapters.perplexity_adapter import PerplexityAdapter
+from .adapters.xai_adapter import XAIAdapter
+from .adapters.anyscale_adapter import AnyscaleAdapter
+from .adapters.octoml_adapter import OctoMLAdapter
+from .adapters.lepton_adapter import LeptonAdapter
+from .adapters.novita_adapter import NovitaAdapter
+from .adapters.lambda_adapter import LambdaAdapter
+from .adapters.cohere_adapter import CohereAdapter
+from .adapters.replicate_adapter import ReplicateAdapter
+from .adapters.huggingface_adapter import HuggingFaceAdapter
+from .adapters.ai21_adapter import AI21Adapter
+from .adapters.azure_adapter import AzureAdapter
+from .adapters.bedrock_adapter import BedrockAdapter
+from .adapters.meta_adapter import MetaAdapter
+from .adapters.friendly_adapter import FriendlyAdapter
+from .adapters.botuvic_adapter import BotuvicAdapter
 from .config import LLMConfig
 
 
@@ -32,10 +55,33 @@ class LLMManager:
         
         # Registry of available adapters
         self.adapter_registry = {
+            "BOTUVIC": BotuvicAdapter,  # Default free model
             "OpenAI": OpenAIAdapter,
             "Anthropic": AnthropicAdapter,
             "Ollama": OllamaAdapter,
             "Google": GoogleAdapter,
+            "DeepSeek": DeepSeekAdapter,
+            "Groq": GroqAdapter,
+            "Mistral": MistralAdapter,
+            "Together": TogetherAdapter,
+            "Fireworks": FireworksAdapter,
+            "OpenRouter": OpenRouterAdapter,
+            "DeepInfra": DeepInfraAdapter,
+            "Perplexity": PerplexityAdapter,
+            "X.AI": XAIAdapter,
+            "Anyscale": AnyscaleAdapter,
+            "OctoML": OctoMLAdapter,
+            "Lepton": LeptonAdapter,
+            "Novita": NovitaAdapter,
+            "Lambda": LambdaAdapter,
+            "Cohere": CohereAdapter,
+            "Replicate": ReplicateAdapter,
+            "HuggingFace": HuggingFaceAdapter,
+            "AI21": AI21Adapter,
+            "Azure": AzureAdapter,
+            "Bedrock": BedrockAdapter,
+            "Meta": MetaAdapter,
+            "Friendly": FriendlyAdapter,
         }
         
         # Current active adapter
@@ -51,8 +97,28 @@ class LLMManager:
         config = self.storage.load("llm_config")
         if config:
             self.settings = config.get("settings", self.settings)
-            # Note: We don't restore the adapter here for security reasons
-            # User needs to provide API key again
+            self.active_model = config.get("model")
+            provider = config.get("provider")
+
+            # Try to restore API key from global storage automatically
+            keys_store = self.storage.load_global("api_keys") or {}
+            api_key = keys_store.get(provider)
+
+            if provider and self.active_model and api_key:
+                try:
+                    adapter_class = self.adapter_registry.get(provider)
+                    if adapter_class:
+                        self.active_adapter = adapter_class(api_key=api_key)
+                except:
+                    pass
+        else:
+            # No config exists - initialize with BOTUVIC as default
+            try:
+                self.active_adapter = BotuvicAdapter()
+                self.active_model = "botuvic-ai"
+                print("✨ Initialized with BOTUVIC AI (free)")
+            except:
+                pass
     
     def discover_models(self) -> Dict[str, List[Dict]]:
         """
@@ -191,38 +257,69 @@ class LLMManager:
         self,
         messages: List[Dict[str, str]],
         functions: List[Dict] = None,
+        max_retries: int = 3,
         **override_settings
     ) -> Dict[str, Any]:
         """
-        Send chat request using configured LLM.
-        
+        Send chat request using configured LLM with retry logic.
+
         Args:
             messages: List of message dicts
             functions: Optional list of function definitions for tool calling
+            max_retries: Maximum number of retries on failure (default 3)
             **override_settings: Temporary setting overrides
-            
+
         Returns:
             Response dict with content and optional tool_calls
         """
+        import time
+
         if not self.active_adapter or not self.active_model:
             raise ValueError("LLM not configured. Call configure_llm() first.")
-        
+
         # Merge settings
         settings = {**self.settings, **override_settings}
-        
+
         # Prepare tools if provided
         if functions:
             # Format functions as tools for OpenAI-style API
             tools = [{"type": "function", "function": f} for f in functions]
             settings["tools"] = tools
             settings["tool_choice"] = "auto"
-        
-        # Send request
-        return self.active_adapter.chat(
-            messages=messages,
-            model=self.active_model,
-            **settings
-        )
+
+        # Retry logic
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                return self.active_adapter.chat(
+                    messages=messages,
+                    model=self.active_model,
+                    **settings
+                )
+            except Exception as e:
+                last_error = e
+                error_str = str(e).lower()
+
+                # Don't retry on auth errors
+                if "401" in error_str or "authentication" in error_str or "invalid" in error_str:
+                    raise e
+
+                # Retry on rate limits and connection errors
+                if "429" in error_str or "rate limit" in error_str or "connection" in error_str:
+                    wait_time = (attempt + 1) * 2  # 2, 4, 6 seconds
+                    print(f"⏳ Rate limited, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+
+                # For other errors, retry once
+                if attempt == 0:
+                    time.sleep(1)
+                    continue
+
+                raise e
+
+        # If all retries failed
+        raise last_error
     
     def update_settings(self, **settings):
         """

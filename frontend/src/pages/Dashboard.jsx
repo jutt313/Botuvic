@@ -1,38 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { Header } from '@/components/layout/Header';
-import { MetricsGrid } from '@/components/metrics/MetricsGrid';
-import { ProjectList } from '@/components/projects/ProjectList';
-import { ActivityChart } from '@/components/charts/ActivityChart';
+import React, { useEffect } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { User } from 'lucide-react';
+import { StatsCards } from '@/components/dashboard/StatsCards';
+import { ProjectProgressChart } from '@/components/charts/ProjectProgressChart';
+import { TaskCompletionChart } from '@/components/charts/TaskCompletionChart';
+import { ProjectsTable } from '@/components/projects/ProjectsTable';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { useTerminalTracking } from '@/hooks/useTerminalTracking';
 
 export const Dashboard = () => {
-  const renderCountRef = React.useRef(0);
-
-  React.useEffect(() => {
-    renderCountRef.current += 1;
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/f4201013-abc5-489e-9ece-a98ac059c1d2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Dashboard.jsx:8',message:'Dashboard render',data:{renderCount:renderCountRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'I'})}).catch(()=>{});
-    // #endregion
-  }); // This will log every render but won't cause re-renders
-
-  const handleNewProject = () => {
-    // TODO: Open new project modal or navigate to project creation
-    console.log('New project');
-  };
+  const { user } = useAuthStore();
+  const userName = user?.name || user?.email || 'User';
+  
+  // Track terminal usage
+  useTerminalTracking();
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-
-      <main className="container px-6 py-8 space-y-8">
-        {/* Metrics */}
-        <MetricsGrid />
-
-        {/* Projects */}
-        <ProjectList onNewProject={handleNewProject} />
-
-        {/* Activity */}
-        <ActivityChart />
-      </main>
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        <header className="dashboard-header">
+          <div className="dashboard-welcome">
+            <span className="welcome-text">Welcome</span>
+            <span className="username-gradient">{userName}</span>
+          </div>
+          <div className="dashboard-header-actions">
+            <NotificationDropdown />
+            <button className="icon-button" aria-label="Profile">
+              <User className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
+        <StatsCards />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-[25px] mb-6">
+          <ProjectProgressChart />
+          <TaskCompletionChart />
+        </div>
+        <div className="px-[25px] mb-6">
+          <ProjectsTable />
+        </div>
+      </div>
     </div>
   );
 };

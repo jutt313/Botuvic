@@ -2,12 +2,14 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
-import { Dashboard } from '@/pages/Dashboard';
+import { Dashboard } from './pages/Dashboard';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
+import Onboarding from './pages/Onboarding';
 import ProjectDetail from './pages/ProjectDetail';
 import Settings from './pages/Settings';
+import { ProfileGuard } from './components/ProfileGuard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,15 +73,25 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
           <Route
             path="/"
             element={
               <ProtectedRoute>
+              <ProfileGuard>
                 <Dashboard />
+              </ProfileGuard>
               </ProtectedRoute>
             }
           />
@@ -87,7 +99,9 @@ function App() {
             path="/project/:id"
             element={
               <ProtectedRoute>
+              <ProfileGuard>
                 <ProjectDetail />
+              </ProfileGuard>
               </ProtectedRoute>
             }
           />
@@ -95,11 +109,13 @@ function App() {
             path="/settings"
             element={
               <ProtectedRoute>
+              <ProfileGuard>
                 <Settings />
+              </ProfileGuard>
               </ProtectedRoute>
             }
           />
-        </Routes>
+      </Routes>
       </BrowserRouter>
     </QueryClientProvider>
   );

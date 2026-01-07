@@ -7,11 +7,13 @@ import sys
 import json
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
+from rich.live import Live
+from rich.spinner import Spinner
 from .agent import BotuvicAgent
 from .ui.header import display_header
 from .ui.auth import authenticate_user
 from .ui.project_selector import select_project
-from .ui.menu import show_command_menu, get_command_help
+from .ui.menu import show_command_menu
 from .ui.llm_config_ui import configure_llm_ui
 from .ui.permissions import PermissionManager
 from .ui.code_viewer import CodeChangeViewer
@@ -30,10 +32,11 @@ class BotuvicCLI:
         self.permission_manager = None
         self.code_viewer = CodeChangeViewer()
         self.terminal_viewer = TerminalViewer()
+        self.conversation_history = []
         
     def run(self):
         """Main application loop."""
-        # Step 1: Show header
+        # Step 1: Show header (initial - no project info yet)
         display_header()
         
         # Step 2: Authentication
@@ -42,7 +45,7 @@ class BotuvicCLI:
             console.print("[red]Authentication failed. Exiting.[/red]")
             sys.exit(1)
         
-        console.print(f"[green]✓[/green] Welcome back, [cyan]{self.user['name']}[/cyan]!\n")
+        console.print(f"[green]✓[/green] Welcome back, [#A855F7]{self.user['name']}[/#A855F7]!\n")
         
         # Step 3: Project selection
         self.current_project = select_project(self.user)
@@ -53,7 +56,15 @@ class BotuvicCLI:
         
         # Step 4: Initialize agent
         project_dir = self.current_project['path']
-        os.chdir(project_dir)  # Change to project directory
+
+        # Change to project directory if not already there
+        if os.getcwd() != project_dir:
+            os.chdir(project_dir)
+            console.print(f"[dim]Working directory: {project_dir}[/dim]")
+
+        # Update project status to in_progress if it's new
+        if self.current_project.get('status') == 'new':
+            self.update_project_status('in_progress')
         
         self.agent = BotuvicAgent(project_dir)
         
@@ -67,42 +78,83 @@ class BotuvicCLI:
             if Confirm.ask("Configure LLM now?", default=True):
                 configure_llm_ui(self.agent.llm_manager)
         
-        # Step 7: Main chat loop
+        # Step 7: Load conversation history
+        self.conversation_history = self.load_conversation_history()
+
+        # Clear screen and show header with project info
+        os.system('clear' if os.name == 'posix' else 'cls')
+        display_header(
+            project_name=self.current_project.get('name'),
+            project_path=self.current_project.get('path')
+        )
+
+        # Show workflow welcome message and phase indicator
+        self.show_workflow_status()
+
+        if self.conversation_history and len(self.conversation_history) > 0:
+            console.print(f"[dim]Loaded {len(self.conversation_history)} previous messages[/dim]")
+
+            # Show last few messages as preview
+            preview_count = min(3, len(self.conversation_history))
+            if preview_count > 0:
+                console.print("[dim]Last conversation:[/dim]")
+                for msg in self.conversation_history[-preview_count:]:
+                    role = msg.get('role')
+                    message = msg.get('message', '')[:80]
+                    if role == 'user':
+                        console.print(f"  [#FFFFFF]You:[/#FFFFFF] {message}")
+                    else:
+                        console.print(f"  [#A855F7]BOTUVIC:[/#A855F7] {message}")
+                console.print()
+
+        # Step 8: Main chat loop
         self.chat_loop()
     
     def chat_loop(self):
         """Main interactive chat loop."""
-        console.print("\n[dim]═[/dim]" * 60)
-        console.print(f"[bold cyan]Project:[/bold cyan] {self.current_project['name']}")
-        console.print(f"[bold cyan]Directory:[/bold cyan] {self.current_project['path']}")
-        console.print("[dim]═[/dim]" * 60)
-        console.print()
+        # Get terminal width for full-width lines
+        terminal_width = console.width
+        separator = "─" * terminal_width
         
         while True:
             try:
-                # Get user input
-                user_input = console.input("[#10B981]You:[/#10B981] ")
+                # Input prompt - Purple monochrome
+                user_input = console.input("\n[#A855F7]>[/#A855F7] ")
                 
                 # Handle special commands
                 if user_input.startswith('/'):
                     command = user_input[1:].strip()
                     if not command:
+                        # User just typed "/" - show menu
+                        console.print()
                         command = show_command_menu()
                     if command:
                         self.handle_command(command)
+                    else:
+                        console.print("[yellow]No command selected[/yellow]")
                     continue
                 
                 if user_input.lower() in ['exit', 'quit', 'bye', 'q']:
-                    console.print("\n[cyan]Goodbye! 👋[/cyan]")
+                    console.print("\n[#A855F7]Goodbye! 👋[/#A855F7]")
                     break
                 
                 if not user_input.strip():
                     continue
                 
-                # Send to agent
+                # Save user message
+                self.save_message('user', user_input)
+
+                # Send to agent with full conversation history
                 console.print()
-                with console.status("[cyan]BOTUVIC is thinking...[/cyan]"):
-                    response = self.agent.chat(user_input)
+                
+                # Show animated thinking indicator that disappears when response arrives
+                spinner = Spinner("dots", text="[#64748B]∴ Thinking...[/#64748B]")
+                with Live(spinner, console=console, refresh_per_second=10, transient=True):
+                    # Pass conversation history to agent for context
+                    response = self.agent.chat(user_input, history=self.conversation_history)
+
+                # Save assistant response
+                self.save_message('assistant', response)
                 
                 # Display response
                 console.print(f"[bold #A855F7]BOTUVIC:[/bold #A855F7] {response}")
@@ -121,128 +173,48 @@ class BotuvicCLI:
     
     def handle_command(self, command):
         """Handle menu command."""
-        handlers = {
-            'init': self.handle_init,
-            'scan': self.handle_scan,
-            'status': self.handle_status,
-            'chat': lambda: None,  # Already in chat mode
-            'config': self.handle_config,
-            'models': self.handle_models,
-            'report': self.handle_report,
-            'fix': self.handle_fix,
-            'verify': self.handle_verify,
-            'git': self.handle_git,
-            'permissions': self.handle_permissions,
-            'help': self.handle_help,
-            'exit': lambda: sys.exit(0),
-        }
-        
-        handler = handlers.get(command.lower())
-        if handler:
-            handler()
+        if command == 'config':
+            configure_llm_ui(self.agent.llm_manager)
+        elif command == 'exit':
+            sys.exit(0)
+        elif command == 'summary':
+            # Generate conversation summary
+            console.print("\n[#A855F7]Generating conversation summary...[/#A855F7]")
+            # Pass backend conversation history to ensure we use the most up-to-date data
+            result = self.agent._generate_conversation_summary(history=self.conversation_history)
+            if result.get("success"):
+                console.print(f"[#10B981]✓ Summary saved to: {result['file_path']}[/#10B981]")
+                console.print(f"[dim]Total messages saved: {result.get('total_messages', 0)} | Q&A pairs: {result.get('total_qa_pairs', 0)}[/dim]\n")
+            else:
+                console.print(f"[red]✗ Failed to generate summary: {result.get('error', 'Unknown error')}[/red]\n")
         else:
-            console.print(f"[yellow]Unknown command: {command}[/yellow]")
-            console.print(f"Type '/help' for available commands")
-    
-    def handle_init(self):
-        """Handle init command."""
-        console.print("\n[bold cyan]📋 Initialize Project[/bold cyan]\n")
-        console.print("Project is already initialized in this directory.")
-    
-    def handle_scan(self):
-        """Handle scan command."""
-        console.print("\n[bold cyan]🔍 Scanning Project...[/bold cyan]\n")
-        with console.status("[cyan]Scanning...[/cyan]"):
-            result = self.agent.storage.load("scan_result")
-            if not result:
-                # Trigger scan
-                from .agent.functions import scanner
-                result = scanner.scan_project(self.current_project['path'])
-                self.agent.storage.save("scan_result", result)
-        
-        console.print(f"[green]✓[/green] Found {result.get('total_files', 0)} files")
-        console.print(f"[green]✓[/green] {result.get('total_lines', 0)} lines of code")
-    
-    def handle_status(self):
-        """Handle status command."""
-        console.print("\n[bold cyan]📊 Project Status[/bold cyan]\n")
-        progress = self.agent.storage.load("progress")
-        if progress:
-            console.print(f"Overall Progress: {progress.get('overall_progress', 0)}%")
-            console.print(f"Completed Tasks: {progress.get('completed_tasks', 0)}/{progress.get('total_tasks', 0)}")
-        else:
-            console.print("[yellow]No progress data available[/yellow]")
-    
-    def handle_config(self):
-        """Handle config command."""
-        console.print("\n[bold cyan]⚙️  Configuration[/bold cyan]\n")
-        configure_llm_ui(self.agent.llm_manager)
-    
-    def handle_models(self):
-        """Handle models command."""
-        console.print("\n[bold cyan]🤖 LLM Models[/bold cyan]\n")
-        all_models = self.agent.llm_manager.discover_models()
-        for provider, models in all_models.items():
-            console.print(f"\n[bold]{provider}:[/bold]")
-            for model in models[:5]:
-                console.print(f"  - {model.get('name', model.get('id'))}")
-    
-    def handle_report(self):
-        """Handle report command."""
-        console.print("\n[bold cyan]📝 Generating Reports...[/bold cyan]\n")
-        with console.status("[cyan]Generating...[/cyan]"):
-            result = self.agent.reporter.generate_all_reports()
-        console.print(f"[green]✓[/green] Generated {len(result.get('reports_generated', []))} reports")
-    
-    def handle_fix(self):
-        """Handle fix command."""
-        console.print("\n[bold cyan]🔧 Error Fixing[/bold cyan]\n")
-        console.print("Use this command after encountering an error.")
-        console.print("Or describe the error in chat and BOTUVIC will help fix it.")
-    
-    def handle_verify(self):
-        """Handle verify command."""
-        console.print("\n[bold cyan]✅ Phase Verification[/bold cyan]\n")
-        roadmap = self.agent.storage.load("roadmap")
-        if roadmap:
-            current_phase = roadmap.get("current_phase", 1)
-            console.print(f"Verifying Phase {current_phase}...")
-            # Trigger verification
-        else:
-            console.print("[yellow]No roadmap found[/yellow]")
-    
-    def handle_git(self):
-        """Handle git command."""
-        console.print("\n[bold cyan]🔀 Git Operations[/bold cyan]\n")
-        status = self.agent.git.get_status()
-        if status.get("initialized"):
-            console.print(f"Branch: {status.get('branch', 'N/A')}")
-            console.print(f"Modified: {status.get('modified_files', 0)} files")
-        else:
-            console.print("[yellow]Git not initialized[/yellow]")
-            if Confirm.ask("Initialize git?"):
-                self.agent.git.initialize_repo()
-    
-    def handle_permissions(self):
-        """Handle permissions command."""
-        console.print("\n[bold cyan]🔒 Permissions[/bold cyan]\n")
-        self.permission_manager.show_permissions()
-        console.print()
-        mode = Prompt.ask(
-            "Set mode",
-            choices=["ask", "auto", "read_only"],
-            default=self.permission_manager.permissions["mode"]
-        )
-        self.permission_manager.set_mode(mode)
-        console.print(f"[green]✓[/green] Mode set to {mode}")
-    
-    def handle_help(self):
-        """Handle help command."""
-        console.print("\n[bold cyan]❓ Help[/bold cyan]\n")
-        from .ui.menu import COMMANDS
-        for cmd, desc in COMMANDS:
-            help_text = get_command_help(cmd[0])
-            console.print(f"[cyan]{cmd[0]:<15}[/cyan] - {help_text}")
+            console.print(f"[yellow]Command '{command}' is not yet implemented.[/yellow]")
+
+    def show_workflow_status(self):
+        """Show workflow welcome message and phase indicator."""
+        if not self.agent:
+            return
+
+        # Check if new project and show appropriate welcome
+        is_new = self.agent.is_new_project()
+        welcome_msg = self.agent.get_welcome_message()
+
+        if welcome_msg:
+            console.print(f"\n{welcome_msg}\n")
+
+        # Show current phase indicator
+        current_phase = self.agent.get_current_phase()
+        if current_phase:
+            phase_num = current_phase.get('phase_number', 1)
+            phase_name = current_phase.get('phase_name', 'Unknown')
+
+            # Show phase progress bar
+            total_phases = 8
+            current_num = min(phase_num, total_phases)
+            progress = "●" * current_num + "○" * (total_phases - current_num)
+
+            console.print(f"[dim]Phase {current_num}/{total_phases}: [#A855F7]{phase_name}[/#A855F7][/dim]")
+            console.print(f"[dim]{progress}[/dim]\n")
     
     def check_pending_actions(self):
         """Check for pending actions that need user approval."""
@@ -293,17 +265,128 @@ class BotuvicCLI:
             console.print(f"[red]Error applying change: {e}[/red]")
     
     def execute_command(self, cmd):
-        """Execute a terminal command."""
+        """Execute a terminal command after approval."""
         command_str = cmd["command"]
         
         try:
-            from .agent.functions import executor
-            result = executor.execute_command(command_str)
-            console.print(f"[green]✓[/green] Command executed")
-            if result.get("output"):
-                console.print(f"[dim]{result['output'][:500]}[/dim]")
+            from .agent.functions.executor import _execute_directly
+            console.print(f"\n[dim]Executing: {command_str}[/dim]")
+
+            result = _execute_directly(command_str)
+
+            if result.get("success"):
+                console.print(f"[green]✓[/green] Command executed successfully\n")
+                if result.get("stdout"):
+                    console.print(f"[dim]{result['stdout']}[/dim]")
+            else:
+                console.print(f"[red]✗[/red] Command failed")
+                if result.get("stderr"):
+                    console.print(f"[red]{result['stderr']}[/red]")
+                if result.get("error"):
+                    console.print(f"[red]{result['error']}[/red]")
         except Exception as e:
             console.print(f"[red]Error executing command: {e}[/red]")
+
+    def update_project_status(self, status):
+        """Update project status in backend."""
+        try:
+            import requests
+
+            project_id = self.current_project.get('id')
+            if not project_id:
+                return
+
+            backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+            token = self.user.get('token')
+
+            if not token:
+                return
+
+            headers = {"Authorization": f"Bearer {token}"}
+
+            requests.patch(
+                f"{backend_url}/api/projects/{project_id}/status",
+                params={"status": status},
+                headers=headers,
+                timeout=5
+            )
+
+            # Update local project status
+            self.current_project['status'] = status
+        except:
+            pass  # Silently fail
+
+    def load_conversation_history(self):
+        """Load conversation history from backend."""
+        try:
+            import requests
+
+            project_id = self.current_project.get('id')
+            if not project_id:
+                return []
+
+            backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+            token = self.user.get('token')
+
+            if not token:
+                return []
+
+            headers = {"Authorization": f"Bearer {token}"}
+
+            response = requests.get(
+                f"{backend_url}/api/projects/{project_id}/messages",
+                headers=headers,
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                return response.json()
+
+            return []
+        except Exception as e:
+            console.print(f"[dim]Could not load conversation history: {e}[/dim]")
+            return []
+
+    def save_message(self, role, message):
+        """Save a message to conversation history."""
+        try:
+            import requests
+
+            project_id = self.current_project.get('id')
+            if not project_id:
+                return
+
+            backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+            token = self.user.get('token')
+
+            if not token:
+                return
+
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
+
+            response = requests.post(
+                f"{backend_url}/api/projects/{project_id}/messages",
+                headers=headers,
+                json={
+                    "role": role,
+                    "message": message
+                },
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                # Add to local history
+                msg_data = response.json()
+                self.conversation_history.append({
+                    "role": role,
+                    "message": message,
+                    "created_at": msg_data.get("created_at")
+                })
+        except Exception as e:
+            console.print(f"[dim]Could not save message: {e}[/dim]")
 
 
 def cli():
