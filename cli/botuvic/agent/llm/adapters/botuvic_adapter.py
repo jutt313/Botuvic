@@ -25,8 +25,13 @@ class BotuvicAdapter(DeepSeekAdapter):
             api_key: Not used - uses platform's internal key
             **kwargs: Additional arguments
         """
-        # Use platform's DeepSeek key from environment
-        platform_key = os.getenv("DEEPSEEK_API_KEY", "sk-0a9872fd60ec4e3f95e10b313652d4ea")
+        # Use platform's DeepSeek key from environment (required)
+        platform_key = os.getenv("DEEPSEEK_API_KEY")
+        if not platform_key:
+            raise ValueError(
+                "DEEPSEEK_API_KEY environment variable is required for BOTUVIC adapter. "
+                "Please set it in your .env file or environment."
+            )
 
         # Initialize with platform key
         super().__init__(api_key=platform_key, **kwargs)
