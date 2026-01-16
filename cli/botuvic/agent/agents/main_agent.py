@@ -121,35 +121,80 @@ You are NOT an "AI assistant" or "language model". You ARE BOTUVIC - one unified
 
 ---
 
-### PHASE 2: TECH STACK DECISION
+### PHASE 2: TECH STACK ARCHITECTURE
 
-**Goal:** Choose the perfect technologies for this project
+**Goal:** Design a cohesive stack that covers ALL target platforms (Mobile, Desktop, CLI, Web) efficiently.
+**Role:** Senior Tech Lead. You already know the user's profile; optimize for their constraints and the project's platforms.
 
-**Must Decide:**
-- Frontend Framework: React, Next.js, Vue, Nuxt, Svelte, Angular, React Native, Flutter
-- Styling: Tailwind CSS, CSS Modules, Styled Components, Sass
-- State Management: Zustand, Redux, Jotai, Context API, Pinia
-- Backend: Node.js, Python/FastAPI, Go, Rust, Supabase, Firebase
-- Database: PostgreSQL, MySQL, MongoDB, Supabase, Firebase, PlanetScale
-- Auth: Supabase Auth, NextAuth, Firebase Auth, Auth0, Clerk
-- File Storage: Supabase Storage, S3, Cloudinary, Firebase Storage
-- Deployment: Vercel, Railway, Render, AWS, GCP, Fly.io
+**THE SELECTION PROTOCOL (Execute in order):**
 
-**Decision Rules:**
-- By User Skill: Beginner → All-in-one solutions (Supabase, Firebase, Vercel)
-- By Project Type: Web App → Next.js / React + Backend
-- By Scale: Small (100s) → Serverless, managed services
-- By Features: Real-time → Supabase Realtime / Socket.io / Pusher
+**1. Platform-First Strategy (The Core Decision)**
+   - **Analyze Target Platforms:**
+     - If **Mobile (iOS/Android) + Web**: You MUST search/evaluate **Cross-Platform** options (Flutter, React Native/Expo) vs. **Native**.
+     - If **Desktop**: Evaluate Electron vs. Tauri vs. Flutter Desktop.
+     - If **Terminal/CLI**: Evaluate Python (Typer/Click), Go (Cobra), or Rust (Clap) based on performance needs.
+   - **The "Code Sharing" Rule:** If building for multiple platforms (e.g., Web + Mobile), prioritize stacks that share logic (e.g., TRPC, shared Typescript packages, or Dart/Flutter).
+   - **Monorepo vs Multi-repo:** Decide if Monorepo (Turborepo/Nx) or separate repos based on team size and deployment needs.
+
+**2. Profile-Based Selection (Silent Check)**
+   - **Do NOT ask** "What language do you know?" (You have the User Profile from Phase 1).
+   - **Action:** Select the backend/language that aligns with the User's Profile *and* the Platform requirement.
+   - **Conflict Detection:** If the profile says "Python User" but they want a "High-performance iOS app," **Search & Warn:** "Python (Kivy/BeeWare) might lag on iOS. I recommend learning Swift or React Native for this. Proceed with Python anyway?"
+
+**3. The "Deep Search" for Best-in-Class (Mandatory)**
+   - **Search Action:** Do not guess. Search for the current state of the art:
+     - *"Best tech stack for [Web + Mobile + CLI] project 2025"*
+     - *"Current limitations of [Framework X] for [Feature Y]"*
+     - *"[Framework A] vs [Framework B] for [Use Case] 2025"*
+   - **Cost Check:** Search pricing for hosted components (e.g., "Vercel pricing vs VPS for high bandwidth 2025").
+
+**4. The AI Stack (If Phase 1 involves AI)**
+   - **Vector DB:** Pinecone / Weaviate / Supabase (pgvector) / Qdrant.
+   - **Orchestration:** LangChain / LlamaIndex / Vercel AI SDK / LangGraph.
+   - **Model Serving:** OpenAI API / Anthropic / Local (Ollama) / Replicate / Together AI.
+   - **Cost Validation:** Cross-reference Phase 1 AI cost estimates with chosen providers.
+
+**5. Backend & Data Strategy**
+   - **API Type:** REST vs. GraphQL vs. gRPC vs. tRPC (Crucial for Mobile/CLI clients).
+   - **Real-time:** If "Live Updates" required → Search best WebSocket solution for the specific backend (e.g., FastAPI WebSockets vs. Supabase Realtime vs. Socket.io).
+   - **Database Choice:** SQL (PostgreSQL/MySQL) vs. NoSQL (MongoDB) vs. Hybrid (Supabase) based on data structure from Phase 1.
+
+**PHASE 2 OUTPUT SUMMARY (Must be presented to user for confirmation):**
+---------------------------------------------------------
+**ARCHITECTURE STACK: [Project Name]**
+
+**1. Platform Strategy:** [Monorepo (Turborepo/Nx) / Multi-repo] + [How we share code across platforms]
+
+**2. Frontend(s):**
+   - **Web:** [Framework + Styling + State Management]
+   - **Mobile:** [Framework (if applicable)]
+   - **Desktop:** [Framework (if applicable)]
+   - **CLI:** [Library (if applicable)]
+
+**3. Backend Core:** [Language + Framework + API Type (REST/GraphQL/tRPC)]
+
+**4. Database & AI:**
+   - **Primary DB:** [Database + Provider]
+   - **Vector DB:** [Vector DB (if AI project)]
+   - **Model Provider:** [LLM Provider (if AI project)]
+
+**5. Infrastructure:**
+   - **Auth:** [Auth Provider]
+   - **Storage:** [File Storage (if needed)]
+   - **Hosting:** [Deployment Platform(s)]
+
+**6. Rationale:** [Why this specific combo works for User's Profile + These Platforms + Cost Constraints]
+---------------------------------------------------------
 
 **Phase 2 Checklist (Must pass before Phase 3):**
-- [ ] Frontend framework decided
-- [ ] Backend/API decided
-- [ ] Database decided
-- [ ] Auth method decided
-- [ ] File storage decided (if needed)
-- [ ] Deployment platform decided
-- [ ] All choices have reasoning
-- [ ] User confirmed tech stack
+- [ ] Stack covers ALL target platforms (Mobile/Desktop/Web/CLI) defined in Phase 1
+- [ ] Backend API is compatible with all clients (Mobile, CLI, Web can all access it)
+- [ ] **AI Stack defined** (Vector DB + LLM Model + Orchestration) if AI project
+- [ ] Selection aligns with User Profile (or explicit warnings given for mismatches)
+- [ ] **External APIs & Costs** validated via Search (hosting, AI, third-party services)
+- [ ] Code sharing strategy defined for multi-platform projects
+- [ ] Monorepo vs Multi-repo decision made
+- [ ] User confirmed the Stack
 
 ---
 
@@ -785,10 +830,10 @@ JSON:"""
         return extracted
 
     def _extract_tech_stack_data(self, user_message: str, response: str) -> Dict[str, Any]:
-        """Extract tech stack data from conversation."""
+        """Extract tech stack data from conversation per new Phase 2 architecture."""
         extracted = {}
 
-        extraction_prompt = f"""Extract tech stack information from this conversation.
+        extraction_prompt = f"""Extract tech stack information from this conversation per the new Phase 2 architecture.
 
 User said: "{user_message}"
 
@@ -796,11 +841,32 @@ Current data: {json.dumps(self.phase_data.get('tech_stack', {}))}
 
 Extract and return ONLY a JSON object with any NEW information:
 {{
-    "frontend": {{"framework": "", "styling": ""}},
-    "backend": {{"framework": "", "language": ""}},
-    "database": {{"type": "", "provider": ""}},
-    "authentication": {{"provider": ""}},
-    "deployment": {{"frontend": "", "backend": ""}}
+    "platform_strategy": "Monorepo (Turborepo/Nx) or Multi-repo + code sharing approach if mentioned",
+    "frontends": {{
+        "web": "Framework + Styling + State Management if mentioned",
+        "mobile": "Framework (React Native/Flutter/Native) if mentioned",
+        "desktop": "Framework (Electron/Tauri/Flutter) if mentioned",
+        "cli": "Library (Typer/Click/Cobra/Clap) if mentioned"
+    }},
+    "backend": {{
+        "language": "Language if mentioned",
+        "framework": "Framework if mentioned",
+        "api_type": "REST/GraphQL/gRPC/tRPC if mentioned"
+    }},
+    "database": {{
+        "type": "SQL/NoSQL/Hybrid if mentioned",
+        "provider": "PostgreSQL/MySQL/MongoDB/Supabase if mentioned"
+    }},
+    "vector_db": "Pinecone/Weaviate/Supabase/Qdrant if AI project",
+    "model_provider": "OpenAI/Anthropic/Ollama/Replicate if AI project",
+    "infrastructure": {{
+        "auth": "Auth provider if mentioned",
+        "storage": "File storage if mentioned",
+        "hosting": "Deployment platform(s) if mentioned"
+    }},
+    "rationale": "Why this stack works for user's profile and platforms if mentioned",
+    "search_results": ["list of search findings if searches were done"],
+    "warnings": ["any profile mismatches or concerns if mentioned"]
 }}
 
 Only include fields with NEW information. Return empty {{}} if nothing new.
@@ -815,7 +881,7 @@ JSON:"""
             if json_match:
                 data = json.loads(json_match.group())
                 for key, value in data.items():
-                    if value and value != {} and value != "null":
+                    if value and value != {} and value != [] and value != "null":
                         extracted[key] = value
         except Exception as e:
             console.print(f"[dim]Extraction: {e}[/dim]")
@@ -907,10 +973,29 @@ JSON:"""
         return has_required and has_features and has_out_of_scope
 
     def _is_tech_stack_complete(self) -> bool:
-        """Check if tech stack phase has all required data."""
+        """Check if tech stack phase has all required data per new Phase 2 architecture."""
         tech = self.phase_data.get("tech_stack", {})
-        required = ["frontend", "backend", "database"]
-        return all(tech.get(key) for key in required)
+        
+        # Required fields per new Phase 2 architecture
+        required = [
+            "platform_strategy",      # Monorepo/Multi-repo + code sharing
+            "backend",                # Backend core
+            "database",               # Primary database
+            "infrastructure"          # Auth, Storage, Hosting
+        ]
+        
+        # Check required fields
+        has_required = all(tech.get(key) for key in required)
+        
+        # Check that at least one frontend is defined (web, mobile, desktop, or cli)
+        frontends = tech.get("frontends", {})
+        has_frontend = bool(frontends.get("web") or frontends.get("mobile") or 
+                           frontends.get("desktop") or frontends.get("cli"))
+        
+        # Check rationale is provided
+        has_rationale = bool(tech.get("rationale"))
+        
+        return has_required and has_frontend and has_rationale
 
     def _is_design_complete(self) -> bool:
         """Check if design phase has all required data."""
@@ -982,19 +1067,71 @@ Does this look right? (yes/no)"""
         }
 
     def _show_tech_stack_summary(self) -> Dict[str, Any]:
-        """Show tech stack summary for user confirmation."""
+        """Show tech stack summary for user confirmation per new Phase 2 architecture."""
         tech = self.phase_data["tech_stack"]
 
-        frontend = tech.get("frontend", {})
-        backend = tech.get("backend", {})
-        database = tech.get("database", {})
+        # Get frontends
+        frontends = tech.get("frontends", {})
+        web = frontends.get("web", "N/A")
+        mobile = frontends.get("mobile", "N/A")
+        desktop = frontends.get("desktop", "N/A")
+        cli = frontends.get("cli", "N/A")
 
+        # Get backend
+        backend = tech.get("backend", {})
+        if isinstance(backend, dict):
+            backend_text = f"{backend.get('language', '')} + {backend.get('framework', '')} + {backend.get('api_type', 'REST')}"
+        else:
+            backend_text = str(backend)
+
+        # Get database & AI
+        database = tech.get("database", {})
+        if isinstance(database, dict):
+            db_text = f"{database.get('type', 'Not specified')} ({database.get('provider', '')})"
+        else:
+            db_text = str(database)
+
+        vector_db = tech.get("vector_db", "N/A")
+        model_provider = tech.get("model_provider", "N/A")
+
+        # Get infrastructure
+        infrastructure = tech.get("infrastructure", {})
+        if isinstance(infrastructure, dict):
+            auth = infrastructure.get("auth", "Not specified")
+            storage = infrastructure.get("storage", "N/A")
+            hosting = infrastructure.get("hosting", "Not specified")
+        else:
+            auth = "Not specified"
+            storage = "N/A"
+            hosting = "Not specified"
+
+        # Build summary per new architecture format
         summary = f"""
-**Tech Stack Summary:**
-- Frontend: {frontend.get('framework', 'Not specified')} + {frontend.get('styling', 'Not specified')}
-- Backend: {backend.get('framework', 'Not specified')}
-- Database: {database.get('type', 'Not specified')} ({database.get('provider', '')})
-- Deployment: {tech.get('deployment', {}).get('frontend', 'Not specified')}
+---------------------------------------------------------
+**ARCHITECTURE STACK: {tech.get('project_name', 'Your Project')}**
+
+**1. Platform Strategy:** {tech.get('platform_strategy', 'Not specified')}
+
+**2. Frontend(s):**
+   - **Web:** {web}
+   - **Mobile:** {mobile}
+   - **Desktop:** {desktop}
+   - **CLI:** {cli}
+
+**3. Backend Core:** {backend_text}
+
+**4. Database & AI:**
+   - **Primary DB:** {db_text}
+   - **Vector DB:** {vector_db}
+   - **Model Provider:** {model_provider}
+
+**5. Infrastructure:**
+   - **Auth:** {auth}
+   - **Storage:** {storage}
+   - **Hosting:** {hosting}
+
+**6. Rationale:** {tech.get('rationale', 'Not specified')}
+---------------------------------------------------------
 
 Does this look right? (yes/no)"""
 
@@ -1021,7 +1158,7 @@ Ready to generate the project? (yes/no)"""
             "message": summary,
             "status": "awaiting_confirmation",
             "phase": "design"
-        }
+            }
 
     # =========================================================================
     # LLM HELPERS
@@ -1107,10 +1244,10 @@ INSTRUCTIONS:
             else:
                 status_lines.append(f"⏳ {name}")
 
-        return {
+            return {
             "message": "**Project Progress:**\n\n" + "\n".join(status_lines),
-            "status": "info"
-        }
+                "status": "info"
+            }
 
     def _handle_help(self) -> Dict[str, Any]:
         """Handle help request."""
