@@ -154,10 +154,25 @@ You are NOT an "AI assistant" or "language model". You ARE BOTUVIC - one unified
    - **Model Serving:** OpenAI API / Anthropic / Local (Ollama) / Replicate / Together AI.
    - **Cost Validation:** Cross-reference Phase 1 AI cost estimates with chosen providers.
 
-**5. Backend & Data Strategy**
-   - **API Type:** REST vs. GraphQL vs. gRPC vs. tRPC (Crucial for Mobile/CLI clients).
-   - **Real-time:** If "Live Updates" required → Search best WebSocket solution for the specific backend (e.g., FastAPI WebSockets vs. Supabase Realtime vs. Socket.io).
-   - **Database Choice:** SQL (PostgreSQL/MySQL) vs. NoSQL (MongoDB) vs. Hybrid (Supabase) based on data structure from Phase 1.
+**5. Backend & Data Strategy (Conditional - Only if needed)**
+   - **Backend Detection:** Analyze Phase 1 to determine if backend is needed:
+     - **Needs Backend IF:**
+       - User mentions "API", "server", "database", "authentication", "user accounts"
+       - Data entities identified (Users, Orders, etc.)
+       - Real-time features required
+       - Multiple clients (Web + Mobile) need shared data
+       - CLI tool needs to connect to remote service
+     - **No Backend IF:**
+       - Static website (portfolio, landing page)
+       - Frontend-only app using external APIs (e.g., GitHub API, public APIs)
+       - CLI tool that only processes local files
+   - **If Backend Needed:**
+     - **API Type:** REST vs. GraphQL vs. gRPC vs. tRPC (Crucial for Mobile/CLI clients).
+     - **Real-time:** If "Live Updates" required → Search best WebSocket solution (e.g., FastAPI WebSockets vs. Supabase Realtime vs. Socket.io).
+     - **Database Choice:** SQL (PostgreSQL/MySQL) vs. NoSQL (MongoDB) vs. Hybrid (Supabase) based on data structure from Phase 1.
+   - **If No Backend:**
+     - Use external APIs or services (Supabase, Firebase, existing APIs)
+     - Or static hosting (Vercel, Netlify, GitHub Pages)
 
 **PHASE 2 OUTPUT SUMMARY (Must be presented to user for confirmation):**
 ---------------------------------------------------------
@@ -171,16 +186,16 @@ You are NOT an "AI assistant" or "language model". You ARE BOTUVIC - one unified
    - **Desktop:** [Framework (if applicable)]
    - **CLI:** [Library (if applicable)]
 
-**3. Backend Core:** [Language + Framework + API Type (REST/GraphQL/tRPC)]
+**3. Backend Core:** [Language + Framework + API Type (REST/GraphQL/tRPC)] OR [N/A - Using external APIs/static site]
 
 **4. Database & AI:**
-   - **Primary DB:** [Database + Provider]
-   - **Vector DB:** [Vector DB (if AI project)]
-   - **Model Provider:** [LLM Provider (if AI project)]
+   - **Primary DB:** [Database + Provider] OR [N/A - No database needed]
+   - **Vector DB:** [Vector DB (if AI project)] OR [N/A]
+   - **Model Provider:** [LLM Provider (if AI project)] OR [N/A]
 
 **5. Infrastructure:**
-   - **Auth:** [Auth Provider]
-   - **Storage:** [File Storage (if needed)]
+   - **Auth:** [Auth Provider] OR [N/A - No auth needed]
+   - **Storage:** [File Storage (if needed)] OR [N/A]
    - **Hosting:** [Deployment Platform(s)]
 
 **6. Rationale:** [Why this specific combo works for User's Profile + These Platforms + Cost Constraints]
@@ -188,7 +203,9 @@ You are NOT an "AI assistant" or "language model". You ARE BOTUVIC - one unified
 
 **Phase 2 Checklist (Must pass before Phase 3):**
 - [ ] Stack covers ALL target platforms (Mobile/Desktop/Web/CLI) defined in Phase 1
-- [ ] Backend API is compatible with all clients (Mobile, CLI, Web can all access it)
+- [ ] **Backend decision made:** Backend needed? (If yes: API type chosen. If no: External APIs/static hosting chosen)
+- [ ] **If Backend:** Backend API is compatible with all clients (Mobile, CLI, Web can all access it)
+- [ ] **If No Backend:** External API strategy defined (which APIs/services will be used)
 - [ ] **AI Stack defined** (Vector DB + LLM Model + Orchestration) if AI project
 - [ ] Selection aligns with User Profile (or explicit warnings given for mismatches)
 - [ ] **External APIs & Costs** validated via Search (hosting, AI, third-party services)
@@ -879,14 +896,15 @@ Extract and return ONLY a JSON object with any NEW information:
         "desktop": "Framework (Electron/Tauri/Flutter) if mentioned",
         "cli": "Library (Typer/Click/Cobra/Clap) if mentioned"
     }},
+    "backend_needed": true/false - "true if user mentions API/server/database/auth, false if static site/external APIs only",
     "backend": {{
-        "language": "Language if mentioned",
-        "framework": "Framework if mentioned",
-        "api_type": "REST/GraphQL/gRPC/tRPC if mentioned"
+        "language": "Language if mentioned (only if backend_needed is true)",
+        "framework": "Framework if mentioned (only if backend_needed is true)",
+        "api_type": "REST/GraphQL/gRPC/tRPC if mentioned (only if backend_needed is true)"
     }},
     "database": {{
-        "type": "SQL/NoSQL/Hybrid if mentioned",
-        "provider": "PostgreSQL/MySQL/MongoDB/Supabase if mentioned"
+        "type": "SQL/NoSQL/Hybrid if mentioned (only if backend_needed is true)",
+        "provider": "PostgreSQL/MySQL/MongoDB/Supabase if mentioned (only if backend_needed is true)"
     }},
     "vector_db": "Pinecone/Weaviate/Supabase/Qdrant if AI project",
     "model_provider": "OpenAI/Anthropic/Ollama/Replicate if AI project",
@@ -1019,11 +1037,9 @@ JSON:"""
         """Check if tech stack phase has all required data per new Phase 2 architecture."""
         tech = self.phase_data.get("tech_stack", {})
         
-        # Required fields per new Phase 2 architecture
+        # Always required
         required = [
             "platform_strategy",      # Monorepo/Multi-repo + code sharing
-            "backend",                # Backend core
-            "database",               # Primary database
             "infrastructure"          # Auth, Storage, Hosting
         ]
         
@@ -1035,10 +1051,23 @@ JSON:"""
         has_frontend = bool(frontends.get("web") or frontends.get("mobile") or 
                            frontends.get("desktop") or frontends.get("cli"))
         
+        # Backend is OPTIONAL - check if project needs it
+        # If backend_needed flag is False or missing, backend is optional
+        backend_needed = tech.get("backend_needed", True)  # Default to True for backward compatibility
+        
+        if backend_needed:
+            # If backend is needed, it must be defined
+            has_backend = bool(tech.get("backend"))
+            has_database = bool(tech.get("database"))
+        else:
+            # If no backend needed, mark as satisfied
+            has_backend = True
+            has_database = True  # Database also optional if no backend
+        
         # Check rationale is provided
         has_rationale = bool(tech.get("rationale"))
         
-        return has_required and has_frontend and has_rationale
+        return has_required and has_frontend and has_backend and has_database and has_rationale
 
     def _is_design_complete(self) -> bool:
         """Check if design phase has all required data per new Phase 3 Systems Engineering."""
@@ -1143,19 +1172,26 @@ Does this look right? (yes/no)"""
         desktop = frontends.get("desktop", "N/A")
         cli = frontends.get("cli", "N/A")
 
-        # Get backend
-        backend = tech.get("backend", {})
-        if isinstance(backend, dict):
-            backend_text = f"{backend.get('language', '')} + {backend.get('framework', '')} + {backend.get('api_type', 'REST')}"
+        # Get backend (optional)
+        backend_needed = tech.get("backend_needed", True)
+        if backend_needed:
+            backend = tech.get("backend", {})
+            if isinstance(backend, dict):
+                backend_text = f"{backend.get('language', '')} + {backend.get('framework', '')} + {backend.get('api_type', 'REST')}"
+            else:
+                backend_text = str(backend) if backend else "Not specified"
         else:
-            backend_text = str(backend)
+            backend_text = "N/A - Using external APIs/static site"
 
-        # Get database & AI
-        database = tech.get("database", {})
-        if isinstance(database, dict):
-            db_text = f"{database.get('type', 'Not specified')} ({database.get('provider', '')})"
+        # Get database & AI (optional if no backend)
+        if backend_needed:
+            database = tech.get("database", {})
+            if isinstance(database, dict):
+                db_text = f"{database.get('type', 'Not specified')} ({database.get('provider', '')})"
+            else:
+                db_text = str(database) if database else "Not specified"
         else:
-            db_text = str(database)
+            db_text = "N/A - No database needed"
 
         vector_db = tech.get("vector_db", "N/A")
         model_provider = tech.get("model_provider", "N/A")
@@ -1362,10 +1398,10 @@ INSTRUCTIONS:
             else:
                 status_lines.append(f"⏳ {name}")
 
-        return {
+            return {
             "message": "**Project Progress:**\n\n" + "\n".join(status_lines),
-            "status": "info"
-        }
+                "status": "info"
+            }
 
     def _handle_help(self) -> Dict[str, Any]:
         """Handle help request."""
