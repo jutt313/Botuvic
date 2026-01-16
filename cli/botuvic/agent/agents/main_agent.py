@@ -52,40 +52,72 @@ You are NOT an "AI assistant" or "language model". You ARE BOTUVIC - one unified
 
 ## YOUR PROCESS (4 Phases)
 
-### PHASE 1: IDEA COLLECTION
+### PHASE 1: PRODUCT ARCHITECTURE & DISCOVERY
 
-**Goal:** Understand exactly what user wants to build
+**Goal:** Deeply understand the "Why", "How", "Data", and "Cost" before writing code.
+**Role:** You are a Senior Product Architect. Do not just take orders; guide the user to a buildable plan.
 
-**Must Collect:**
-- project_name: Name of the project (YES)
-- project_type: web_app / mobile_app / cli / api / desktop / other (YES)
-- core_concept: One sentence description (YES)
-- target_users: Who will use this (YES)
-- user_pain_point: Problem it solves (YES)
-- core_features: 3-5 main features minimum (YES)
-- secondary_features: Nice-to-have features (NO)
-- scale: 100s / 1000s / 10000s+ users (YES)
-- competitors: Similar apps (search online) (YES)
-- unique_angle: What makes it different (YES)
+**THE DISCOVERY PROTOCOL (Execute in order):**
 
-**Special Requirements to Check:**
-- Payments needed? (one-time / subscription / none)
-- File uploads? (images / documents / videos / none)
-- Real-time features? (chat, live updates)
-- Notifications? (email / push / both / none)
-- Offline support needed?
-- Third-party integrations?
+**1. The Vision & "The Why"**
+   - **Context:** Always refer to the project by name (e.g., "For [Project Name], what is...").
+   - **One-Sentence Rule:** "If we can't explain it in one sentence, we aren't ready." Help the user refine this.
+   - **The Pain:** Ask "What specific pain does the user feel right now that makes them need this?"
 
-**Phase 1 Checklist (Must pass before Phase 2):**
-- [ ] Project name defined
-- [ ] Project type clear
-- [ ] Core concept explained
-- [ ] Target users identified
-- [ ] 3+ core features listed
-- [ ] Scale expectations set
-- [ ] Special requirements checked
-- [ ] Competitors researched
-- [ ] User confirmed summary
+**2. The "Deep Search" Validation (Mandatory for Unknowns)**
+   - **Trigger:** When the user mentions a specific market, tech, or competitor.
+   - **The 3-5 Search Rule:** Do NOT just run one search. You must:
+     1. Search Broad: "Best practices for building [Type] app 2025"
+     2. Search Specific: "Key features of [Competitor X]"
+     3. Search Technical: "[Tech Stack] limitations for [Feature]"
+     4. Search Cost: "API pricing for [Service] 2025"
+     5. **Validate:** Cross-reference these 3-5 results before giving advice.
+
+**3. The "Walkthrough" (Users & Flows)**
+   - **The Journey:** Ask the user to *walk you through one specific task* step-by-step.
+   - **Gap Detection:** If they miss a step (e.g., "User logs in" -> "User buys"), interrupt: "How do they find the item? Do they need a search bar?"
+
+**4. The "AI Cost" Reality Check (Crucial for AI Projects)**
+   - **If project uses AI (LLMs, Image Gen, etc.):**
+     - You MUST search for current API pricing (OpenAI, Anthropic, Replicate, etc.).
+     - You MUST calculate an estimate: "100 users x 10 messages/day = ~30k tokens. At $5/1M tokens, that's $0.15/day."
+     - **Ask:** "Can your business model afford this monthly cost?"
+
+**5. The Data & Complexity**
+   - **Entities:** Identify the nouns (Users, Orders, Projects).
+   - **Real-time:** "Does this need live updates (sockets) or is refresh okay?"
+
+**6. The "MVP" Reality Check**
+   - **Senior Rule:** "If V1 has more than 5 core features, it's not an MVP."
+   - **The "Cut" List:** Explicitly ask: "What is **OUT** of scope for V1?"
+
+**PHASE 1 OUTPUT SUMMARY (Must be presented to user for confirmation):**
+---------------------------------------------------------
+**PROJECT BLUEPRINT: [Project Name]**
+**1. The Core:** [One sentence pitch]
+**2. The Problem:** [The pain point solved]
+**3. Target:** [Who uses it - Validated by Search]
+**4. User Journey:** [Step-by-step flow of main task]
+**5. AI Cost Estimate:** [Monthly estimate based on current API prices] (IF APPLICABLE)
+**6. Primary Features (MVP):**
+   - [Feature 1]
+   - [Feature 2]
+   - [Feature 3]
+   - [Feature 4]
+   - [Feature 5]
+**7. Explicitly OUT of Scope:** [What we are NOT building]
+**8. Data Entities:** [Key database objects]
+**9. Technical Constraints:** [Platform, Scale, Budget]
+---------------------------------------------------------
+
+**Phase 1 Checklist (Must pass to proceed):**
+- [ ] Vision is clear (One sentence test passed)
+- [ ] User flow is defined step-by-step
+- [ ] **AI Costs estimated and approved by user** (if applicable)
+- [ ] **Market/Competitors validated via 3-5 searches**
+- [ ] Data entities are identified
+- [ ] MVP is scoped (Max 5 features)
+- [ ] User confirmed the Blueprint
 
 ---
 
@@ -704,11 +736,11 @@ Start monitoring with config for file watching, error detection, terminal monito
     # =========================================================================
 
     def _extract_idea_data(self, user_message: str, response: str) -> Dict[str, Any]:
-        """Extract idea data from conversation."""
+        """Extract idea data from conversation per new Phase 1 blueprint."""
         extracted = {}
 
-        # Use LLM to extract structured data
-        extraction_prompt = f"""Extract project information from this conversation.
+        # Use LLM to extract structured data per new Phase 1 requirements
+        extraction_prompt = f"""Extract project information from this conversation per the new Phase 1 blueprint.
 
 User said: "{user_message}"
 
@@ -718,9 +750,17 @@ Extract and return ONLY a JSON object with any NEW information found:
 {{
     "project_name": "name if mentioned",
     "project_type": "web_app|mobile_app|cli|api if mentioned",
-    "core_concept": "description if mentioned",
+    "core_concept": "one sentence pitch if mentioned",
+    "pain_point": "specific pain user feels if mentioned",
     "target_users": "who uses it if mentioned",
-    "features": ["list of features if mentioned"]
+    "user_journey": "step-by-step flow of main task if mentioned",
+    "features": ["list of MVP features if mentioned (max 5)"],
+    "out_of_scope": ["what is NOT being built in v1 if mentioned"],
+    "data_entities": ["key database objects like Users, Orders if mentioned"],
+    "technical_constraints": "platform, scale, budget if mentioned",
+    "ai_cost_estimate": "monthly cost estimate if AI features mentioned",
+    "competitors_validated": "true if 3-5 searches done",
+    "search_results": ["list of search findings if searches were done"]
 }}
 
 Only include fields that have NEW information. Return empty {{}} if nothing new.
@@ -737,7 +777,7 @@ JSON:"""
                 data = json.loads(json_match.group())
                 # Only add non-empty values
                 for key, value in data.items():
-                    if value and value != "null":
+                    if value and value != "null" and value != [] and value != {}:
                         extracted[key] = value
         except Exception as e:
             console.print(f"[dim]Extraction: {e}[/dim]")
@@ -841,15 +881,30 @@ JSON:"""
     # =========================================================================
 
     def _is_idea_phase_complete(self) -> bool:
-        """Check if idea phase has all required data."""
+        """Check if idea phase has all required data per new Phase 1 blueprint."""
         idea = self.phase_data.get("idea", {})
-        required = ["project_name", "project_type", "core_concept", "target_users"]
+        
+        # Required fields per new Phase 1 blueprint
+        required = [
+            "project_name",           # The Core (project name)
+            "core_concept",           # One sentence pitch
+            "pain_point",             # The problem solved
+            "target_users",           # Who uses it
+            "user_journey",           # Step-by-step flow
+            "data_entities",          # Key database objects
+        ]
+        
+        # Check features (max 5 for MVP)
         features = idea.get("features", [])
-
+        has_features = len(features) >= 3 and len(features) <= 5 if isinstance(features, list) else bool(features)
+        
+        # Check required fields
         has_required = all(idea.get(key) for key in required)
-        has_features = len(features) >= 3 if isinstance(features, list) else bool(features)
-
-        return has_required and has_features
+        
+        # Check OUT of scope is defined
+        has_out_of_scope = bool(idea.get("out_of_scope"))
+        
+        return has_required and has_features and has_out_of_scope
 
     def _is_tech_stack_complete(self) -> bool:
         """Check if tech stack phase has all required data."""
@@ -868,15 +923,55 @@ JSON:"""
     # =========================================================================
 
     def _show_idea_summary(self) -> Dict[str, Any]:
-        """Show idea summary for user confirmation."""
+        """Show idea summary for user confirmation per new Phase 1 blueprint."""
         idea = self.phase_data["idea"]
 
+        # Format features list
+        features = idea.get('features', [])
+        if isinstance(features, list):
+            features_text = '\n'.join([f"   - {f}" for f in features])
+        else:
+            features_text = f"   - {features}"
+
+        # Format OUT of scope list
+        out_of_scope = idea.get('out_of_scope', [])
+        if isinstance(out_of_scope, list):
+            out_text = '\n'.join([f"   - {item}" for item in out_of_scope])
+        else:
+            out_text = f"   - {out_of_scope}"
+
+        # Format data entities
+        entities = idea.get('data_entities', [])
+        if isinstance(entities, list):
+            entities_text = ', '.join(entities)
+        else:
+            entities_text = entities
+
+        # Build summary per new blueprint format
         summary = f"""
-**{idea.get('project_name', 'Your Project')} Summary:**
-- Type: {idea.get('project_type', 'Not specified')}
-- Concept: {idea.get('core_concept', 'Not specified')}
-- For: {idea.get('target_users', 'Not specified')}
-- Features: {', '.join(idea.get('features', [])) if isinstance(idea.get('features'), list) else idea.get('features', 'Not specified')}
+---------------------------------------------------------
+**PROJECT BLUEPRINT: {idea.get('project_name', 'Your Project')}**
+
+**1. The Core:** {idea.get('core_concept', 'Not specified')}
+
+**2. The Problem:** {idea.get('pain_point', 'Not specified')}
+
+**3. Target:** {idea.get('target_users', 'Not specified')}
+
+**4. User Journey:** {idea.get('user_journey', 'Not specified')}
+
+**5. AI Cost Estimate:** {idea.get('ai_cost_estimate', 'N/A - No AI features')}
+
+**6. Primary Features (MVP):**
+{features_text}
+
+**7. Explicitly OUT of Scope:**
+{out_text}
+
+**8. Data Entities:** {entities_text}
+
+**9. Technical Constraints:** {idea.get('technical_constraints', 'Not specified')}
+---------------------------------------------------------
 
 Does this look right? (yes/no)"""
 
