@@ -704,11 +704,54 @@ DATABASE_URL=postgresql://user:password@localhost:5432/database
         """Create skeleton files with structure, imports, types."""
         console.print("[dim]Step 5: Creating skeleton files...[/dim]")
 
-        frontend = tech_stack.get("frontend", {})
-        framework = frontend.get("framework", "Next.js")
+        # Get frontend and backend info
+        frontends = tech_stack.get("frontends", {})
+        backend = tech_stack.get("backend", {})
+        
+        # Legacy support for old format
+        if not frontends:
+            frontend = tech_stack.get("frontend", {})
+            framework = frontend.get("framework", "")
+            frontends = {"web": framework}
 
-        if "next" in framework.lower():
-            self._create_nextjs_skeletons(project, tech_stack, design)
+        # Generate frontend skeletons
+        web_framework = frontends.get("web", "")
+        mobile_framework = frontends.get("mobile", "")
+        desktop_framework = frontends.get("desktop", "")
+        cli_framework = frontends.get("cli", "")
+
+        # Web Frontend
+        if web_framework:
+            if "next" in web_framework.lower():
+                self._create_nextjs_skeletons(project, tech_stack, design)
+            elif "react" in web_framework.lower():
+                self._create_react_skeletons(project, tech_stack, design)
+            elif "vue" in web_framework.lower():
+                self._create_vue_skeletons(project, tech_stack, design)
+            elif "svelte" in web_framework.lower():
+                self._create_svelte_skeletons(project, tech_stack, design)
+
+        # Mobile Frontend
+        if mobile_framework:
+            if "flutter" in mobile_framework.lower():
+                self._create_flutter_skeletons(project, tech_stack, design)
+            elif "react native" in mobile_framework.lower() or "expo" in mobile_framework.lower():
+                self._create_react_native_skeletons(project, tech_stack, design)
+
+        # CLI
+        if cli_framework:
+            self._create_cli_skeletons(project, tech_stack, design, cli_framework)
+
+        # Backend (always generate if specified)
+        backend_framework = backend.get("framework", "") if isinstance(backend, dict) else str(backend)
+        backend_language = backend.get("language", "") if isinstance(backend, dict) else ""
+        
+        if "fastapi" in backend_framework.lower() or "python" in backend_language.lower():
+            self._create_python_fastapi_skeletons(project, tech_stack, design)
+        elif "express" in backend_framework.lower() or "node" in backend_language.lower():
+            self._create_nodejs_skeletons(project, tech_stack, design)
+        elif "go" in backend_language.lower() or "gin" in backend_framework.lower():
+            self._create_go_skeletons(project, tech_stack, design)
 
         console.print(f"[green]✓[/green] Skeleton files created")
 
@@ -1006,11 +1049,973 @@ export default function LoginPage() {
 '''
 
     # =========================================================================
+    # PYTHON/FASTAPI SKELETONS
+    # =========================================================================
+
+    def _create_python_fastapi_skeletons(self, project: Dict, tech_stack: Dict, design: Dict):
+        """Create Python/FastAPI skeleton files."""
+        console.print("[dim]  → Creating Python/FastAPI backend...[/dim]")
+        
+        name = project.get("project_name", "my_app").lower().replace(" ", "_").replace("-", "_")
+        
+        # Create backend folder structure
+        self.tools.create_folder("backend/app/routers")
+        self.tools.create_folder("backend/app/models")
+        self.tools.create_folder("backend/app/schemas")
+        self.tools.create_folder("backend/app/services")
+        self.tools.create_folder("backend/app/core")
+        self.tools.create_folder("backend/tests")
+        self.folders_created += 6
+
+        # main.py
+        main_py = self._generate_fastapi_main(name)
+        result = self.tools.write_file("backend/app/main.py", main_py)
+        if result.get("success"):
+            self.files_created += 1
+
+        # config.py
+        config_py = self._generate_fastapi_config()
+        result = self.tools.write_file("backend/app/core/config.py", config_py)
+        if result.get("success"):
+            self.files_created += 1
+
+        # database.py
+        database_py = self._generate_fastapi_database(tech_stack)
+        result = self.tools.write_file("backend/app/core/database.py", database_py)
+        if result.get("success"):
+            self.files_created += 1
+
+        # User model
+        user_model = self._generate_fastapi_user_model()
+        result = self.tools.write_file("backend/app/models/user.py", user_model)
+        if result.get("success"):
+            self.files_created += 1
+
+        # User schema
+        user_schema = self._generate_fastapi_user_schema()
+        result = self.tools.write_file("backend/app/schemas/user.py", user_schema)
+        if result.get("success"):
+            self.files_created += 1
+
+        # Auth router
+        auth_router = self._generate_fastapi_auth_router()
+        result = self.tools.write_file("backend/app/routers/auth.py", auth_router)
+        if result.get("success"):
+            self.files_created += 1
+
+        # requirements.txt
+        requirements = self._generate_python_requirements(tech_stack)
+        result = self.tools.write_file("backend/requirements.txt", requirements)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _generate_fastapi_main(self, name: str) -> str:
+        """Generate FastAPI main.py."""
+        return f'''"""
+{name} - FastAPI Backend
+Generated by BOTUVIC CodeAgent
+"""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
+from app.routers import auth
+
+app = FastAPI(
+    title="{name}",
+    description="API built with BOTUVIC",
+    version="0.1.0"
+)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Routers
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+
+
+@app.get("/")
+async def root():
+    return {{"message": "Welcome to {name} API"}}
+
+
+@app.get("/health")
+async def health_check():
+    return {{"status": "healthy"}}
+'''
+
+    def _generate_fastapi_config(self) -> str:
+        """Generate FastAPI config.py."""
+        return '''from pydantic_settings import BaseSettings
+from typing import List
+
+
+class Settings(BaseSettings):
+    """Application settings."""
+    
+    # App
+    APP_NAME: str = "My App"
+    DEBUG: bool = False
+    
+    # Database
+    DATABASE_URL: str = "postgresql://user:password@localhost:5432/db"
+    
+    # Auth
+    SECRET_KEY: str = "change-this-secret-key"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    
+    # CORS
+    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    
+    class Config:
+        env_file = ".env"
+
+
+settings = Settings()
+'''
+
+    def _generate_fastapi_database(self, tech_stack: Dict) -> str:
+        """Generate FastAPI database.py."""
+        db = tech_stack.get("database", {})
+        provider = db.get("provider", "").lower()
+        
+        if "supabase" in provider:
+            return '''from supabase import create_client, Client
+from app.core.config import settings
+
+supabase: Client = create_client(
+    settings.SUPABASE_URL,
+    settings.SUPABASE_KEY
+)
+
+
+def get_supabase() -> Client:
+    return supabase
+'''
+        else:
+            return '''from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+from app.core.config import settings
+
+engine = create_engine(settings.DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+'''
+
+    def _generate_fastapi_user_model(self) -> str:
+        """Generate FastAPI user model."""
+        return '''from sqlalchemy import Column, String, DateTime, Boolean
+from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime
+import uuid
+
+from app.core.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String, unique=True, index=True, nullable=False)
+    username = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    full_name = Column(String)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+'''
+
+    def _generate_fastapi_user_schema(self) -> str:
+        """Generate FastAPI user schema."""
+        return '''from pydantic import BaseModel, EmailStr
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
+
+
+class UserBase(BaseModel):
+    email: EmailStr
+    username: str
+    full_name: Optional[str] = None
+
+
+class UserCreate(UserBase):
+    password: str
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(UserBase):
+    id: UUID
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+'''
+
+    def _generate_fastapi_auth_router(self) -> str:
+        """Generate FastAPI auth router."""
+        return '''from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
+from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
+
+router = APIRouter()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+@router.post("/signup", response_model=UserResponse)
+async def signup(user: UserCreate):
+    """Create new user account."""
+    # TODO: Implement signup logic
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Signup not implemented yet"
+    )
+
+
+@router.post("/login", response_model=Token)
+async def login(user: UserLogin):
+    """Authenticate user and return token."""
+    # TODO: Implement login logic
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Login not implemented yet"
+    )
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """Get current authenticated user."""
+    # TODO: Implement get current user logic
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Get current user not implemented yet"
+    )
+'''
+
+    def _generate_python_requirements(self, tech_stack: Dict) -> str:
+        """Generate Python requirements.txt."""
+        db = tech_stack.get("database", {})
+        provider = db.get("provider", "").lower()
+        
+        reqs = """# Core
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+
+"""
+        if "supabase" in provider:
+            reqs += """# Database (Supabase)
+supabase>=2.0.0
+"""
+        else:
+            reqs += """# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+alembic>=1.12.0
+"""
+        
+        reqs += """
+# Utils
+python-dotenv>=1.0.0
+httpx>=0.25.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+"""
+        return reqs
+
+    # =========================================================================
+    # REACT SKELETONS (Vite)
+    # =========================================================================
+
+    def _create_react_skeletons(self, project: Dict, tech_stack: Dict, design: Dict):
+        """Create React (Vite) skeleton files."""
+        console.print("[dim]  → Creating React frontend...[/dim]")
+        
+        # Create folders
+        self.tools.create_folder("frontend/src/components")
+        self.tools.create_folder("frontend/src/pages")
+        self.tools.create_folder("frontend/src/hooks")
+        self.tools.create_folder("frontend/src/lib")
+        self.tools.create_folder("frontend/src/stores")
+        self.folders_created += 5
+
+        # vite.config.ts
+        vite_config = self._generate_vite_config()
+        result = self.tools.write_file("frontend/vite.config.ts", vite_config)
+        if result.get("success"):
+            self.files_created += 1
+
+        # main.tsx
+        main_tsx = self._generate_react_main()
+        result = self.tools.write_file("frontend/src/main.tsx", main_tsx)
+        if result.get("success"):
+            self.files_created += 1
+
+        # App.tsx
+        app_tsx = self._generate_react_app(project)
+        result = self.tools.write_file("frontend/src/App.tsx", app_tsx)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _generate_vite_config(self) -> str:
+        """Generate vite.config.ts."""
+        return '''import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+})
+'''
+
+    def _generate_react_main(self) -> str:
+        """Generate React main.tsx."""
+        return '''import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+'''
+
+    def _generate_react_app(self, project: Dict) -> str:
+        """Generate React App.tsx."""
+        name = project.get("project_name", "My App")
+        return f'''function App() {{
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+      <h1 className="text-4xl font-bold mb-4">{name}</h1>
+      <p className="text-gray-600 mb-8">Welcome to your React app!</p>
+    </div>
+  )
+}}
+
+export default App
+'''
+
+    # =========================================================================
+    # VUE SKELETONS
+    # =========================================================================
+
+    def _create_vue_skeletons(self, project: Dict, tech_stack: Dict, design: Dict):
+        """Create Vue skeleton files."""
+        console.print("[dim]  → Creating Vue frontend...[/dim]")
+        
+        # Create folders
+        self.tools.create_folder("frontend/src/components")
+        self.tools.create_folder("frontend/src/views")
+        self.tools.create_folder("frontend/src/stores")
+        self.folders_created += 3
+
+        # App.vue
+        app_vue = self._generate_vue_app(project)
+        result = self.tools.write_file("frontend/src/App.vue", app_vue)
+        if result.get("success"):
+            self.files_created += 1
+
+        # main.ts
+        main_ts = self._generate_vue_main()
+        result = self.tools.write_file("frontend/src/main.ts", main_ts)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _generate_vue_app(self, project: Dict) -> str:
+        """Generate Vue App.vue."""
+        name = project.get("project_name", "My App")
+        return f'''<script setup lang="ts">
+// {name} - Vue App
+</script>
+
+<template>
+  <div class="min-h-screen flex flex-col items-center justify-center p-8">
+    <h1 class="text-4xl font-bold mb-4">{name}</h1>
+    <p class="text-gray-600 mb-8">Welcome to your Vue app!</p>
+  </div>
+</template>
+
+<style scoped>
+</style>
+'''
+
+    def _generate_vue_main(self) -> str:
+        """Generate Vue main.ts."""
+        return '''import { createApp } from 'vue'
+import App from './App.vue'
+import './style.css'
+
+createApp(App).mount('#app')
+'''
+
+    # =========================================================================
+    # SVELTE SKELETONS
+    # =========================================================================
+
+    def _create_svelte_skeletons(self, project: Dict, tech_stack: Dict, design: Dict):
+        """Create Svelte skeleton files."""
+        console.print("[dim]  → Creating Svelte frontend...[/dim]")
+        
+        # Create folders
+        self.tools.create_folder("frontend/src/lib")
+        self.tools.create_folder("frontend/src/routes")
+        self.folders_created += 2
+
+        # +page.svelte
+        page = self._generate_svelte_page(project)
+        result = self.tools.write_file("frontend/src/routes/+page.svelte", page)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _generate_svelte_page(self, project: Dict) -> str:
+        """Generate Svelte +page.svelte."""
+        name = project.get("project_name", "My App")
+        return f'''<script lang="ts">
+  // {name}
+</script>
+
+<div class="min-h-screen flex flex-col items-center justify-center p-8">
+  <h1 class="text-4xl font-bold mb-4">{name}</h1>
+  <p class="text-gray-600 mb-8">Welcome to your Svelte app!</p>
+</div>
+
+<style>
+</style>
+'''
+
+    # =========================================================================
+    # FLUTTER SKELETONS
+    # =========================================================================
+
+    def _create_flutter_skeletons(self, project: Dict, tech_stack: Dict, design: Dict):
+        """Create Flutter skeleton files."""
+        console.print("[dim]  → Creating Flutter mobile app...[/dim]")
+        
+        name = project.get("project_name", "my_app").lower().replace(" ", "_").replace("-", "_")
+        
+        # Create folders
+        self.tools.create_folder("mobile/lib/screens")
+        self.tools.create_folder("mobile/lib/widgets")
+        self.tools.create_folder("mobile/lib/services")
+        self.tools.create_folder("mobile/lib/models")
+        self.folders_created += 4
+
+        # main.dart
+        main_dart = self._generate_flutter_main(project)
+        result = self.tools.write_file("mobile/lib/main.dart", main_dart)
+        if result.get("success"):
+            self.files_created += 1
+
+        # home_screen.dart
+        home = self._generate_flutter_home(project)
+        result = self.tools.write_file("mobile/lib/screens/home_screen.dart", home)
+        if result.get("success"):
+            self.files_created += 1
+
+        # pubspec.yaml
+        pubspec = self._generate_pubspec(project, tech_stack)
+        result = self.tools.write_file("mobile/pubspec.yaml", pubspec)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _generate_flutter_main(self, project: Dict) -> str:
+        """Generate Flutter main.dart."""
+        name = project.get("project_name", "My App")
+        return f'''import 'package:flutter/material.dart';
+import 'screens/home_screen.dart';
+
+void main() {{
+  runApp(const MyApp());
+}}
+
+class MyApp extends StatelessWidget {{
+  const MyApp({{super.key}});
+
+  @override
+  Widget build(BuildContext context) {{
+    return MaterialApp(
+      title: '{name}',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+      ),
+      home: const HomeScreen(),
+    );
+  }}
+}}
+'''
+
+    def _generate_flutter_home(self, project: Dict) -> str:
+        """Generate Flutter home_screen.dart."""
+        name = project.get("project_name", "My App")
+        return f'''import 'package:flutter/material.dart';
+
+class HomeScreen extends StatelessWidget {{
+  const HomeScreen({{super.key}});
+
+  @override
+  Widget build(BuildContext context) {{
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('{name}'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Welcome to {name}!',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {{
+                // TODO: Add navigation
+              }},
+              child: const Text('Get Started'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }}
+}}
+'''
+
+    def _generate_pubspec(self, project: Dict, tech_stack: Dict) -> str:
+        """Generate Flutter pubspec.yaml."""
+        name = project.get("project_name", "my_app").lower().replace(" ", "_").replace("-", "_")
+        return f'''name: {name}
+description: "Built with BOTUVIC"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  http: ^1.1.0
+  provider: ^6.1.1
+  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+'''
+
+    # =========================================================================
+    # REACT NATIVE SKELETONS
+    # =========================================================================
+
+    def _create_react_native_skeletons(self, project: Dict, tech_stack: Dict, design: Dict):
+        """Create React Native/Expo skeleton files."""
+        console.print("[dim]  → Creating React Native mobile app...[/dim]")
+        
+        # Create folders
+        self.tools.create_folder("mobile/app")
+        self.tools.create_folder("mobile/components")
+        self.tools.create_folder("mobile/hooks")
+        self.tools.create_folder("mobile/lib")
+        self.folders_created += 4
+
+        # App.tsx
+        app_tsx = self._generate_rn_app(project)
+        result = self.tools.write_file("mobile/App.tsx", app_tsx)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _generate_rn_app(self, project: Dict) -> str:
+        """Generate React Native App.tsx."""
+        name = project.get("project_name", "My App")
+        return f'''import {{ StatusBar }} from 'expo-status-bar';
+import {{ StyleSheet, Text, View }} from 'react-native';
+
+export default function App() {{
+  return (
+    <View style={{styles.container}}>
+      <Text style={{styles.title}}>{name}</Text>
+      <Text style={{styles.subtitle}}>Welcome to your mobile app!</Text>
+      <StatusBar style="auto" />
+    </View>
+  );
+}}
+
+const styles = StyleSheet.create({{
+  container: {{
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }},
+  title: {{
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  }},
+  subtitle: {{
+    fontSize: 16,
+    color: '#666',
+  }},
+}});
+'''
+
+    # =========================================================================
+    # GO SKELETONS
+    # =========================================================================
+
+    def _create_go_skeletons(self, project: Dict, tech_stack: Dict, design: Dict):
+        """Create Go skeleton files."""
+        console.print("[dim]  → Creating Go backend...[/dim]")
+        
+        name = project.get("project_name", "myapp").lower().replace(" ", "").replace("-", "")
+        
+        # Create folders
+        self.tools.create_folder("backend/cmd/server")
+        self.tools.create_folder("backend/internal/handlers")
+        self.tools.create_folder("backend/internal/models")
+        self.tools.create_folder("backend/internal/database")
+        self.folders_created += 4
+
+        # main.go
+        main_go = self._generate_go_main(name)
+        result = self.tools.write_file("backend/cmd/server/main.go", main_go)
+        if result.get("success"):
+            self.files_created += 1
+
+        # go.mod
+        go_mod = self._generate_go_mod(name)
+        result = self.tools.write_file("backend/go.mod", go_mod)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _generate_go_main(self, name: str) -> str:
+        """Generate Go main.go."""
+        return f'''package main
+
+import (
+	"log"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+func main() {{
+	r := gin.Default()
+
+	// CORS
+	r.Use(func(c *gin.Context) {{
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if c.Request.Method == "OPTIONS" {{
+			c.AbortWithStatus(204)
+			return
+		}}
+		c.Next()
+	}})
+
+	// Routes
+	r.GET("/", func(c *gin.Context) {{
+		c.JSON(http.StatusOK, gin.H{{"message": "Welcome to {name} API"}})
+	}})
+
+	r.GET("/health", func(c *gin.Context) {{
+		c.JSON(http.StatusOK, gin.H{{"status": "healthy"}})
+	}})
+
+	// Start server
+	log.Println("Server starting on :8080")
+	if err := r.Run(":8080"); err != nil {{
+		log.Fatal(err)
+	}}
+}}
+'''
+
+    def _generate_go_mod(self, name: str) -> str:
+        """Generate Go go.mod."""
+        return f'''module {name}
+
+go 1.21
+
+require (
+	github.com/gin-gonic/gin v1.9.1
+)
+'''
+
+    # =========================================================================
+    # CLI SKELETONS
+    # =========================================================================
+
+    def _create_cli_skeletons(self, project: Dict, tech_stack: Dict, design: Dict, framework: str):
+        """Create CLI skeleton files."""
+        console.print("[dim]  → Creating CLI application...[/dim]")
+        
+        name = project.get("project_name", "mycli").lower().replace(" ", "_").replace("-", "_")
+        
+        if "python" in framework.lower() or "typer" in framework.lower() or "click" in framework.lower():
+            self._create_python_cli(project, name)
+        elif "go" in framework.lower() or "cobra" in framework.lower():
+            self._create_go_cli(project, name)
+        elif "rust" in framework.lower() or "clap" in framework.lower():
+            self._create_rust_cli(project, name)
+
+    def _create_python_cli(self, project: Dict, name: str):
+        """Create Python CLI with Typer."""
+        # Create folders
+        self.tools.create_folder(f"cli/{name}")
+        self.tools.create_folder(f"cli/{name}/commands")
+        self.folders_created += 2
+
+        # main.py
+        main_py = self._generate_python_cli_main(project, name)
+        result = self.tools.write_file(f"cli/{name}/main.py", main_py)
+        if result.get("success"):
+            self.files_created += 1
+
+        # requirements.txt
+        reqs = """typer>=0.9.0
+rich>=13.0.0
+"""
+        result = self.tools.write_file("cli/requirements.txt", reqs)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _generate_python_cli_main(self, project: Dict, name: str) -> str:
+        """Generate Python CLI main.py."""
+        display_name = project.get("project_name", "My CLI")
+        return f'''"""
+{display_name} - CLI Application
+Generated by BOTUVIC CodeAgent
+"""
+
+import typer
+from rich.console import Console
+
+app = typer.Typer(help="{display_name} CLI")
+console = Console()
+
+
+@app.command()
+def hello(name: str = "World"):
+    """Say hello."""
+    console.print(f"[green]Hello, {{name}}![/green]")
+
+
+@app.command()
+def version():
+    """Show version."""
+    console.print("[bold]{display_name}[/bold] v0.1.0")
+
+
+if __name__ == "__main__":
+    app()
+'''
+
+    def _create_go_cli(self, project: Dict, name: str):
+        """Create Go CLI with Cobra."""
+        # Create folders
+        self.tools.create_folder("cli/cmd")
+        self.folders_created += 1
+
+        # main.go
+        main_go = f'''package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+)
+
+var rootCmd = &cobra.Command{{
+	Use:   "{name}",
+	Short: "{project.get("project_name", "CLI")}",
+	Long:  "Built with BOTUVIC",
+}}
+
+func main() {{
+	if err := rootCmd.Execute(); err != nil {{
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}}
+}}
+'''
+        result = self.tools.write_file("cli/main.go", main_go)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _create_rust_cli(self, project: Dict, name: str):
+        """Create Rust CLI with Clap."""
+        # Create folders
+        self.tools.create_folder("cli/src")
+        self.folders_created += 1
+
+        # main.rs
+        main_rs = f'''use clap::{{Parser, Subcommand}};
+
+#[derive(Parser)]
+#[command(name = "{name}")]
+#[command(about = "{project.get("project_name", "CLI")} - Built with BOTUVIC")]
+struct Cli {{
+    #[command(subcommand)]
+    command: Commands,
+}}
+
+#[derive(Subcommand)]
+enum Commands {{
+    /// Say hello
+    Hello {{ name: Option<String> }},
+    /// Show version
+    Version,
+}}
+
+fn main() {{
+    let cli = Cli::parse();
+
+    match cli.command {{
+        Commands::Hello {{ name }} => {{
+            let name = name.unwrap_or_else(|| "World".to_string());
+            println!("Hello, {{}}!", name);
+        }}
+        Commands::Version => {{
+            println!("{name} v0.1.0");
+        }}
+    }}
+}}
+'''
+        result = self.tools.write_file("cli/src/main.rs", main_rs)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _create_nodejs_skeletons(self, project: Dict, tech_stack: Dict, design: Dict):
+        """Create Node.js/Express skeleton files."""
+        console.print("[dim]  → Creating Node.js backend...[/dim]")
+        
+        # Create folders
+        self.tools.create_folder("backend/src/routes")
+        self.tools.create_folder("backend/src/controllers")
+        self.tools.create_folder("backend/src/middleware")
+        self.tools.create_folder("backend/src/models")
+        self.folders_created += 4
+
+        # index.js
+        index_js = self._generate_express_index(project)
+        result = self.tools.write_file("backend/src/index.js", index_js)
+        if result.get("success"):
+            self.files_created += 1
+
+        # package.json
+        package_json = self._generate_express_package(project)
+        result = self.tools.write_file("backend/package.json", package_json)
+        if result.get("success"):
+            self.files_created += 1
+
+    def _generate_express_index(self, project: Dict) -> str:
+        """Generate Express index.js."""
+        name = project.get("project_name", "My App")
+        return f'''const express = require('express');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Routes
+app.get('/', (req, res) => {{
+  res.json({{ message: 'Welcome to {name} API' }});
+}});
+
+app.get('/health', (req, res) => {{
+  res.json({{ status: 'healthy' }});
+}});
+
+// Start server
+app.listen(PORT, () => {{
+  console.log(`Server running on port ${{PORT}}`);
+}});
+'''
+
+    def _generate_express_package(self, project: Dict) -> str:
+        """Generate Express package.json."""
+        name = project.get("project_name", "backend").lower().replace(" ", "-")
+        return json.dumps({
+            "name": name,
+            "version": "0.1.0",
+            "main": "src/index.js",
+            "scripts": {
+                "dev": "nodemon src/index.js",
+                "start": "node src/index.js"
+            },
+            "dependencies": {
+                "express": "^4.18.2",
+                "cors": "^2.8.5",
+                "dotenv": "^16.3.1"
+            },
+            "devDependencies": {
+                "nodemon": "^3.0.1"
+            }
+        }, indent=2)
+
+    # =========================================================================
     # STEP 6: DOCUMENTATION
     # =========================================================================
 
     def _step_6_documentation(self, project: Dict, tech_stack: Dict, design: Dict):
-        """Generate documentation files."""
+        """Generate comprehensive documentation files."""
         console.print("[dim]Step 6: Creating documentation...[/dim]")
 
         # README.md
@@ -1025,11 +2030,32 @@ export default function LoginPage() {
         if result.get("success"):
             self.files_created += 1
 
-        # docs/ROADMAP.md
-        roadmap = self._generate_roadmap_doc(project)
+        # docs/ROADMAP.md (includes phases, tasks, plan)
+        roadmap = self._generate_roadmap_doc(project, design)
         result = self.tools.write_file("docs/ROADMAP.md", roadmap)
         if result.get("success"):
             self.files_created += 1
+
+        # docs/TESTING.md
+        testing = self._generate_testing_doc(project, tech_stack)
+        result = self.tools.write_file("docs/TESTING.md", testing)
+        if result.get("success"):
+            self.files_created += 1
+
+        # docs/API.md (if backend)
+        backend = tech_stack.get("backend", {})
+        if backend:
+            api_doc = self._generate_api_doc(project, design)
+            result = self.tools.write_file("docs/API.md", api_doc)
+            if result.get("success"):
+                self.files_created += 1
+
+        # docs/AI_INSTRUCTIONS.md (if AI project)
+        if project.get("ai_cost_estimate") or tech_stack.get("vector_db") or tech_stack.get("model_provider"):
+            ai_doc = self._generate_ai_instructions_doc(project, tech_stack, design)
+            result = self.tools.write_file("docs/AI_INSTRUCTIONS.md", ai_doc)
+            if result.get("success"):
+                self.files_created += 1
 
         console.print(f"[green]✓[/green] Documentation created")
 
@@ -1147,54 +2173,728 @@ Run `npm install` again
 Check your `.env.local` credentials
 """
 
-    def _generate_roadmap_doc(self, project: Dict) -> str:
-        """Generate ROADMAP.md."""
-        return """# Development Roadmap
+    def _generate_roadmap_doc(self, project: Dict, design: Dict) -> str:
+        """Generate comprehensive ROADMAP.md with phases, tasks, and plan."""
+        name = project.get("project_name", "My Project")
+        features = project.get("features", [])
+        features_tasks = "\n".join([f"- [ ] {f}" for f in features]) if features else "- [ ] Core feature 1\n- [ ] Core feature 2"
+        
+        # Get data entities for database tasks
+        entities = project.get("data_entities", [])
+        entity_tasks = "\n".join([f"- [ ] CRUD for {e}" for e in entities]) if entities else "- [ ] CRUD operations"
+        
+        # Get backend logic if available
+        backend_logic = design.get("backend_logic", {}) if design else {}
+        routes = backend_logic.get("core_routes", [])
+        routes_tasks = "\n".join([f"- [ ] Implement: {r}" for r in routes[:5]]) if routes else "- [ ] API endpoints"
 
-## Phase 1: Setup ✅ DONE BY BOTUVIC
+        return f"""# Development Roadmap: {name}
 
-- [x] Project structure created
-- [x] Database schema ready
-- [x] Configuration files set
-- [x] Base components created
+## Overview
 
-## Phase 2: Authentication
-
-- [ ] Implement signup flow
-- [ ] Implement login flow
-- [ ] Add auth middleware
-- [ ] Protect dashboard routes
-
-## Phase 3: Core Features
-
-- [ ] Build main dashboard
-- [ ] Implement CRUD operations
-- [ ] Add form validation
-- [ ] Connect to database
-
-## Phase 4: Polish
-
-- [ ] Loading states
-- [ ] Error handling
-- [ ] Responsive design
-- [ ] Dark mode (optional)
-
-## Phase 5: Testing
-
-- [ ] Unit tests
-- [ ] Integration tests
-- [ ] E2E tests
-
-## Phase 6: Deployment
-
-- [ ] Push to GitHub
-- [ ] Deploy to Vercel/hosting
-- [ ] Set production env vars
-- [ ] Test production build
+This roadmap outlines the development phases, tasks, and milestones for {name}.
 
 ---
 
-Generated by BOTUVIC
+## 📋 PHASE 1: Foundation ✅ DONE BY BOTUVIC
+
+**Status:** Complete  
+**Duration:** Automated
+
+- [x] Project folder structure created
+- [x] Database schema designed (`database/schema.sql`)
+- [x] Configuration files generated
+- [x] Skeleton components created
+- [x] Documentation initialized
+
+---
+
+## 🔐 PHASE 2: Authentication & Security
+
+**Status:** Not Started  
+**Estimated:** 1-2 days
+
+### Tasks:
+- [ ] Implement user signup flow
+- [ ] Implement user login flow
+- [ ] Add JWT token handling
+- [ ] Create auth middleware
+- [ ] Protect private routes
+- [ ] Add session management
+- [ ] Implement logout functionality
+
+### Acceptance Criteria:
+- [ ] User can register with email/password
+- [ ] User can log in and receive token
+- [ ] Protected routes redirect unauthenticated users
+- [ ] Tokens refresh properly
+
+---
+
+## ⚡ PHASE 3: Core Features
+
+**Status:** Not Started  
+**Estimated:** 3-5 days
+
+### Primary Features (MVP):
+{features_tasks}
+
+### Database Operations:
+{entity_tasks}
+
+### API Endpoints:
+{routes_tasks}
+
+### Acceptance Criteria:
+- [ ] All primary features functional
+- [ ] Data persists to database
+- [ ] API responses are correct
+
+---
+
+## 🎨 PHASE 4: UI/UX Polish
+
+**Status:** Not Started  
+**Estimated:** 2-3 days
+
+### Tasks:
+- [ ] Add loading states (skeletons, spinners)
+- [ ] Implement error boundaries
+- [ ] Add success/error toast notifications
+- [ ] Responsive design (mobile, tablet, desktop)
+- [ ] Accessibility audit (a11y)
+- [ ] Form validation with error messages
+- [ ] Optimistic UI updates
+
+### Optional:
+- [ ] Dark mode toggle
+- [ ] Animation/transitions
+- [ ] Custom 404/500 pages
+
+---
+
+## 🧪 PHASE 5: Testing
+
+**Status:** Not Started  
+**Estimated:** 2-3 days
+
+See [TESTING.md](./TESTING.md) for detailed testing plan.
+
+### Unit Tests:
+- [ ] Component tests
+- [ ] Utility function tests
+- [ ] Hook tests
+
+### Integration Tests:
+- [ ] API endpoint tests
+- [ ] Database operation tests
+- [ ] Auth flow tests
+
+### E2E Tests:
+- [ ] User signup flow
+- [ ] User login flow
+- [ ] Main user journey
+
+---
+
+## 🚀 PHASE 6: Deployment
+
+**Status:** Not Started  
+**Estimated:** 1 day
+
+### Pre-deployment:
+- [ ] Environment variables set
+- [ ] Build succeeds locally
+- [ ] All tests pass
+
+### Deployment:
+- [ ] Push to GitHub
+- [ ] Deploy frontend (Vercel/Netlify)
+- [ ] Deploy backend (if separate)
+- [ ] Configure custom domain (optional)
+- [ ] Set up CI/CD (optional)
+
+### Post-deployment:
+- [ ] Verify production build works
+- [ ] Test all features in production
+- [ ] Monitor for errors
+
+---
+
+## 📊 Progress Tracker
+
+| Phase | Status | Progress |
+|-------|--------|----------|
+| 1. Foundation | ✅ Done | 100% |
+| 2. Authentication | 🔲 Not Started | 0% |
+| 3. Core Features | 🔲 Not Started | 0% |
+| 4. UI/UX Polish | 🔲 Not Started | 0% |
+| 5. Testing | 🔲 Not Started | 0% |
+| 6. Deployment | 🔲 Not Started | 0% |
+
+---
+
+## 📅 Suggested Timeline
+
+- **Week 1:** Phase 2 (Auth) + Start Phase 3
+- **Week 2:** Complete Phase 3 + Phase 4
+- **Week 3:** Phase 5 (Testing) + Phase 6 (Deploy)
+
+---
+
+Generated by BOTUVIC CodeAgent
+"""
+
+    def _generate_testing_doc(self, project: Dict, tech_stack: Dict) -> str:
+        """Generate TESTING.md with testing plan."""
+        name = project.get("project_name", "My Project")
+        
+        # Detect testing framework based on tech stack
+        frontend = tech_stack.get("frontends", {}).get("web", "") or tech_stack.get("frontend", {}).get("framework", "")
+        backend = tech_stack.get("backend", {})
+        backend_lang = backend.get("language", "") if isinstance(backend, dict) else ""
+        
+        frontend_tests = ""
+        if "next" in frontend.lower() or "react" in frontend.lower():
+            frontend_tests = """### Frontend Testing (React/Next.js)
+
+**Framework:** Jest + React Testing Library
+
+```bash
+# Install testing dependencies
+npm install --save-dev jest @testing-library/react @testing-library/jest-dom
+
+# Run tests
+npm test
+
+# Run with coverage
+npm test -- --coverage
+```
+
+**Example Component Test:**
+```tsx
+import { render, screen } from '@testing-library/react'
+import HomePage from '@/app/page'
+
+describe('HomePage', () => {
+  it('renders welcome message', () => {
+    render(<HomePage />)
+    expect(screen.getByText(/welcome/i)).toBeInTheDocument()
+  })
+})
+```
+"""
+        
+        backend_tests = ""
+        if "python" in backend_lang.lower() or "fastapi" in str(backend).lower():
+            backend_tests = """### Backend Testing (Python/FastAPI)
+
+**Framework:** pytest + pytest-asyncio
+
+```bash
+# Install testing dependencies
+pip install pytest pytest-asyncio httpx
+
+# Run tests
+pytest
+
+# Run with coverage
+pytest --cov=app
+```
+
+**Example API Test:**
+```python
+from httpx import AsyncClient
+from app.main import app
+
+async def test_health_check():
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.get("/health")
+        assert response.status_code == 200
+        assert response.json() == {"status": "healthy"}
+```
+"""
+        
+        return f"""# Testing Plan: {name}
+
+## Overview
+
+This document outlines the testing strategy for {name}.
+
+---
+
+## Testing Pyramid
+
+```
+        /\\
+       /  \\     E2E Tests (10%)
+      /----\\    - Full user flows
+     /      \\   
+    /--------\\  Integration Tests (30%)
+   /          \\ - API tests, DB tests
+  /------------\\ 
+ /              \\ Unit Tests (60%)
+/________________\\ - Components, functions
+```
+
+---
+
+{frontend_tests}
+
+{backend_tests}
+
+---
+
+## Test Categories
+
+### 1. Unit Tests
+
+Test individual components and functions in isolation.
+
+**What to test:**
+- Components render correctly
+- Utility functions return expected values
+- Hooks work as expected
+- State management actions
+
+**Coverage target:** 80%+
+
+---
+
+### 2. Integration Tests
+
+Test how multiple units work together.
+
+**What to test:**
+- API endpoints respond correctly
+- Database operations work
+- Authentication flows
+- Form submissions
+
+**Coverage target:** 70%+
+
+---
+
+### 3. End-to-End (E2E) Tests
+
+Test complete user journeys.
+
+**Framework:** Playwright or Cypress
+
+```bash
+# Install Playwright
+npm init playwright@latest
+
+# Run E2E tests
+npx playwright test
+```
+
+**Key Flows to Test:**
+- [ ] User can sign up
+- [ ] User can log in
+- [ ] User can complete main task
+- [ ] User can log out
+
+---
+
+## Test Coverage Goals
+
+| Type | Target | Priority |
+|------|--------|----------|
+| Unit | 80% | High |
+| Integration | 70% | High |
+| E2E | 50% | Medium |
+
+---
+
+## Running Tests
+
+### All Tests
+```bash
+npm test
+```
+
+### With Coverage Report
+```bash
+npm test -- --coverage
+```
+
+### Watch Mode (Development)
+```bash
+npm test -- --watch
+```
+
+### E2E Tests
+```bash
+npx playwright test
+```
+
+---
+
+## CI/CD Integration
+
+Add to your GitHub Actions workflow:
+
+```yaml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - run: npm ci
+      - run: npm test -- --coverage
+```
+
+---
+
+Generated by BOTUVIC CodeAgent
+"""
+
+    def _generate_api_doc(self, project: Dict, design: Dict) -> str:
+        """Generate API.md documentation."""
+        name = project.get("project_name", "My Project")
+        
+        # Get routes from design
+        backend_logic = design.get("backend_logic", {}) if design else {}
+        routes = backend_logic.get("core_routes", [])
+        
+        routes_doc = ""
+        for route in routes[:10]:
+            routes_doc += f"\n### `{route}`\n\n**Description:** TODO\n\n**Response:**\n```json\n{{}}\n```\n\n---\n"
+        
+        if not routes_doc:
+            routes_doc = """
+### `GET /api/health`
+
+**Description:** Health check endpoint
+
+**Response:**
+```json
+{
+  "status": "healthy"
+}
+```
+
+---
+
+### `POST /api/auth/login`
+
+**Description:** User authentication
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbG...",
+  "token_type": "bearer"
+}
+```
+
+---
+
+### `GET /api/users/me`
+
+**Description:** Get current user profile
+
+**Headers:**
+- `Authorization: Bearer <token>`
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "username": "johndoe",
+  "created_at": "2024-01-01T00:00:00Z"
+}
+```
+"""
+        
+        return f"""# API Documentation: {name}
+
+## Base URL
+
+- **Development:** `http://localhost:3001/api`
+- **Production:** `https://your-domain.com/api`
+
+---
+
+## Authentication
+
+Most endpoints require authentication via JWT token.
+
+**Header:**
+```
+Authorization: Bearer <access_token>
+```
+
+---
+
+## Endpoints
+
+{routes_doc}
+
+---
+
+## Error Responses
+
+All errors follow this format:
+
+```json
+{{
+  "error": {{
+    "code": "ERROR_CODE",
+    "message": "Human-readable error message"
+  }}
+}}
+```
+
+### Common Error Codes
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `UNAUTHORIZED` | 401 | Missing or invalid token |
+| `FORBIDDEN` | 403 | Insufficient permissions |
+| `NOT_FOUND` | 404 | Resource not found |
+| `VALIDATION_ERROR` | 422 | Invalid input data |
+| `INTERNAL_ERROR` | 500 | Server error |
+
+---
+
+## Rate Limiting
+
+- **Limit:** 100 requests per minute
+- **Headers:**
+  - `X-RateLimit-Limit`: Max requests
+  - `X-RateLimit-Remaining`: Remaining requests
+  - `X-RateLimit-Reset`: Reset timestamp
+
+---
+
+Generated by BOTUVIC CodeAgent
+"""
+
+    def _generate_ai_instructions_doc(self, project: Dict, tech_stack: Dict, design: Dict) -> str:
+        """Generate AI_INSTRUCTIONS.md for AI projects."""
+        name = project.get("project_name", "My Project")
+        
+        vector_db = tech_stack.get("vector_db", "Not specified")
+        model_provider = tech_stack.get("model_provider", "OpenAI")
+        ai_cost = project.get("ai_cost_estimate", "Not calculated")
+        
+        # Get AI pipeline from design
+        backend_logic = design.get("backend_logic", {}) if design else {}
+        ai_pipeline = backend_logic.get("ai_rag_pipeline", {})
+        
+        pipeline_flow = ai_pipeline.get("flow", "User Input → Embedding → Vector Search → LLM Synthesis → Output") if isinstance(ai_pipeline, dict) else "User Input → Embedding → Vector Search → LLM Synthesis → Output"
+        system_prompt = ai_pipeline.get("system_prompt_structure", "Not defined") if isinstance(ai_pipeline, dict) else "Not defined"
+        
+        return f"""# AI Instructions: {name}
+
+## Overview
+
+This document outlines the AI architecture, prompts, and implementation details for {name}.
+
+---
+
+## AI Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Vector Database** | {vector_db} |
+| **LLM Provider** | {model_provider} |
+| **Estimated Cost** | {ai_cost} |
+
+---
+
+## RAG Pipeline Architecture
+
+```
+{pipeline_flow}
+```
+
+### Detailed Flow:
+
+1. **User Input**
+   - Receive user query
+   - Clean and preprocess text
+   - Log for analytics
+
+2. **Embedding Generation**
+   - Convert query to vector embedding
+   - Model: `text-embedding-ada-002` (or similar)
+   - Dimensions: 1536
+
+3. **Vector Search (RAG)**
+   - Search vector database for relevant context
+   - Top K: 5 results
+   - Similarity threshold: 0.7
+
+4. **Context Assembly**
+   - Combine search results into context
+   - Truncate if over token limit
+   - Format for LLM
+
+5. **LLM Synthesis**
+   - Send context + query to LLM
+   - Apply system prompt
+   - Generate response
+
+6. **Output**
+   - Stream or return response
+   - Log for analytics
+   - Store in chat history
+
+---
+
+## System Prompt Structure
+
+```
+{system_prompt}
+```
+
+### Template:
+
+```python
+SYSTEM_PROMPT = \"\"\"
+You are {name}'s AI assistant.
+
+## Your Role
+- Help users with [specific task]
+- Use the provided context to answer questions
+- Be concise and accurate
+
+## Rules
+1. Only answer based on the provided context
+2. If unsure, say "I don't have enough information"
+3. Never make up facts
+4. Cite sources when possible
+
+## Context
+{{context}}
+
+## User Query
+{{query}}
+\"\"\"
+```
+
+---
+
+## Token & Cost Management
+
+### Estimated Costs (based on Phase 1):
+
+{ai_cost}
+
+### Token Limits:
+
+| Component | Max Tokens |
+|-----------|------------|
+| Context | 3,000 |
+| User Input | 500 |
+| Response | 1,000 |
+| Total | 4,500 |
+
+### Cost Optimization:
+
+- [ ] Cache frequently asked queries
+- [ ] Use smaller model for simple queries
+- [ ] Implement rate limiting per user
+- [ ] Monitor token usage daily
+
+---
+
+## Vector Database Schema
+
+```sql
+-- Vectors table
+CREATE TABLE vectors (
+    id UUID PRIMARY KEY,
+    content TEXT NOT NULL,
+    embedding VECTOR(1536),
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Chat history table
+CREATE TABLE chat_history (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    query TEXT NOT NULL,
+    response TEXT NOT NULL,
+    tokens_used INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+## Implementation Checklist
+
+### Setup:
+- [ ] Set up vector database ({vector_db})
+- [ ] Configure LLM provider ({model_provider})
+- [ ] Set API keys in environment
+
+### Embedding Pipeline:
+- [ ] Create embedding function
+- [ ] Set up document chunking
+- [ ] Implement batch embedding
+
+### Search:
+- [ ] Implement vector similarity search
+- [ ] Add metadata filtering
+- [ ] Configure search parameters
+
+### Generation:
+- [ ] Create prompt templates
+- [ ] Implement streaming (optional)
+- [ ] Add response caching
+
+### Monitoring:
+- [ ] Log all queries/responses
+- [ ] Track token usage
+- [ ] Monitor response quality
+
+---
+
+## Environment Variables
+
+```bash
+# LLM Provider
+OPENAI_API_KEY=sk-...
+# or
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Vector Database
+PINECONE_API_KEY=...
+PINECONE_ENVIRONMENT=...
+# or
+SUPABASE_URL=...
+SUPABASE_KEY=...
+
+# Optional: Cost Alerts
+COST_ALERT_THRESHOLD=100
+DAILY_TOKEN_LIMIT=1000000
+```
+
+---
+
+Generated by BOTUVIC CodeAgent
 """
 
     # =========================================================================
