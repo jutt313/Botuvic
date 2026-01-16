@@ -4,7 +4,9 @@
 
 @layer base {
   body {
-    @apply bg-background text-text;
+    background: transparent;
+    min-height: 100vh;
+    @apply text-text;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 }
@@ -47,7 +49,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-background;
+  background: #1A0F2E;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -64,11 +66,15 @@
   background: linear-gradient(
     to top,
     #000000 0%,
-    #000000 30%,
-    #0A0514 50%,
-    #120A1F 70%,
+    #000000 35%,
+    #05020A 45%,
+    #0A0514 55%,
+    #0F0819 65%,
+    #140B1F 75%,
+    #1A0F2E 85%,
     #1A0F2E 100%
   );
+  background-attachment: fixed;
   position: relative;
   overflow: hidden;
 }

@@ -287,6 +287,23 @@ Only asking 1 question is extremely important.
             # Smart Progression: Check if this save completes the phase
             self._check_and_advance_if_ready()
 
+    def mark_phase_complete(self, phase: Phase):
+        """
+        Mark a phase as complete and advance to next phase.
+        Called by MainAgent when a sub-agent finishes.
+        """
+        self.phase_complete[phase] = True
+
+        # Advance to next phase if not at the end
+        next_phase_val = phase.value + 1
+        if next_phase_val <= len(Phase):
+            try:
+                self.current_phase = Phase(next_phase_val)
+            except ValueError:
+                pass  # Already at last phase
+
+        self.save_state()
+
     def _check_and_advance_if_ready(self):
         """Check if all requirements for the current phase are met, then advance."""
         requirements_met = False

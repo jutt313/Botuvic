@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
 log_step(logger, "Loading configuration from .env")
 try:
-settings = Settings()
+    settings = Settings()
     log_step(logger, "Configuration loaded successfully", {
         "supabase_url": settings.supabase_url[:30] + "..." if len(settings.supabase_url) > 30 else settings.supabase_url
     })

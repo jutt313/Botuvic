@@ -9,7 +9,11 @@ from rich.console import Console
 from rich.prompt import Prompt, Confirm
 from rich.live import Live
 from rich.spinner import Spinner
-from .agent import BotuvicAgent
+from .agent.agents.main_agent import MainAgent
+from .agent.utils.storage import Storage
+from .agent.utils.search import SearchEngine
+from .agent.llm.manager import LLMManager
+from .agent.workflow_controller import WorkflowController
 from .ui.header import display_header
 from .ui.auth import authenticate_user
 from .ui.project_selector import select_project
@@ -66,17 +70,80 @@ class BotuvicCLI:
         if self.current_project.get('status') == 'new':
             self.update_project_status('in_progress')
         
-        self.agent = BotuvicAgent(project_dir)
+        # Initialize components for MainAgent
+        storage = Storage(project_dir)
+        search_engine = SearchEngine()
+        llm_manager = LLMManager(search_engine, storage)
+        workflow = WorkflowController(storage)
+        
+        # Load .env files (same logic as BotuvicAgent)
+        from pathlib import Path
+        from dotenv import load_dotenv
+        
+        possible_env_paths = [
+            Path(__file__).parent.parent.parent.parent.parent / ".env",
+            Path.cwd() / ".env",
+            Path.cwd().parent / ".env",
+            Path.home() / ".botuvic" / ".env",
+        ]
+        
+        for env_path in possible_env_paths:
+            if env_path.exists():
+                load_dotenv(env_path)
+                break
+        else:
+            load_dotenv()
+        
+        # Auto-configure LLM if OpenAI key is available
+        openai_key = os.getenv("OPENAI_API_KEY")
+        if openai_key and not llm_manager.is_configured():
+            try:
+                llm_manager.configure_llm(
+                    provider="OpenAI",
+                    model="gpt-4o",
+                    api_key=openai_key
+                )
+            except:
+                pass
+        
+        # Create LLMWrapper for backward compatibility
+        class LLMWrapper:
+            def __init__(self, manager):
+                self.manager = manager
+
+            def chat(self, messages, functions=None, tools=None, tool_choice=None, **kwargs):
+                if not self.manager.is_configured():
+                    raise ValueError(
+                        "LLM not configured. Please configure an LLM provider first.\n"
+                        "Use: discover_llm_models and configure_llm functions"
+                    )
+                # Support both 'functions' and 'tools' arguments
+                funcs = functions or tools
+                return self.manager.chat(messages, functions=funcs, **kwargs)
+        
+        llm_client = LLMWrapper(llm_manager)
+        
+        # Initialize MainAgent (orchestrator for all 6 sub-agents)
+        self.agent = MainAgent(
+            llm_client=llm_client,
+            storage=storage,
+            project_dir=project_dir,
+            search_engine=search_engine,
+            workflow=workflow
+        )
+        
+        # Store llm_manager for LLM config check
+        self.llm_manager = llm_manager
         
         # Step 5: Setup permissions
         self.permission_manager = PermissionManager(project_dir)
         self.permission_manager.load_permissions()
         
         # Step 6: Check LLM configuration
-        if not self.agent.llm_manager.is_configured():
+        if not self.llm_manager.is_configured():
             console.print("\n[yellow]⚙️  LLM not configured yet.[/yellow]")
             if Confirm.ask("Configure LLM now?", default=True):
-                configure_llm_ui(self.agent.llm_manager)
+                configure_llm_ui(self.llm_manager)
         
         # Step 7: Load conversation history
         self.conversation_history = self.load_conversation_history()
@@ -150,8 +217,9 @@ class BotuvicCLI:
                 # Show animated thinking indicator that disappears when response arrives
                 spinner = Spinner("dots", text="[#64748B]∴ Thinking...[/#64748B]")
                 with Live(spinner, console=console, refresh_per_second=10, transient=True):
-                    # Pass conversation history to agent for context
-                    response = self.agent.chat(user_input, history=self.conversation_history)
+                    # MainAgent handles all routing and orchestration
+                    response_dict = self.agent.chat(user_input)
+                    response = response_dict.get('message', str(response_dict))
 
                 # Save assistant response
                 self.save_message('assistant', response)
@@ -159,6 +227,47 @@ class BotuvicCLI:
                 # Display response
                 console.print(f"[bold #A855F7]BOTUVIC:[/bold #A855F7] {response}")
                 console.print()
+                
+                # Check if awaiting confirmation - show interactive selector
+                status = response_dict.get('status', '')
+                if status == "awaiting_confirmation":
+                    from .ui.confirmation import ask_confirmation
+                    
+                    # Show interactive 3-option selector
+                    confirmation = ask_confirmation()
+                    
+                    if confirmation["choice"] == "yes":
+                        # User confirmed - send "yes" to agent
+                        user_input = "yes"
+                    elif confirmation["choice"] == "no":
+                        # User rejected - send "no" to agent
+                        user_input = "no"
+                    elif confirmation["choice"] == "yes_but":
+                        # User wants changes - combine "yes" with their message
+                        if confirmation["message"]:
+                            user_input = f"yes but {confirmation['message']}"
+                        else:
+                            user_input = "yes but"
+                    else:
+                        user_input = "no"
+                    
+                    # Save user's confirmation choice
+                    self.save_message('user', user_input)
+                    
+                    # Send confirmation back to agent
+                    console.print()
+                    spinner = Spinner("dots", text="[#64748B]∴ Thinking...[/#64748B]")
+                    with Live(spinner, console=console, refresh_per_second=10, transient=True):
+                        response_dict = self.agent.chat(user_input)
+                        response = response_dict.get('message', str(response_dict))
+                    
+                    # Save assistant response
+                    self.save_message('assistant', response)
+                    
+                    # Display response
+                    console.print(f"[bold #A855F7]BOTUVIC:[/bold #A855F7] {response}")
+                    console.print()
+                    continue
                 
                 # Check for pending actions (file changes, commands, etc.)
                 self.check_pending_actions()
@@ -174,7 +283,7 @@ class BotuvicCLI:
     def handle_command(self, command):
         """Handle menu command."""
         if command == 'config':
-            configure_llm_ui(self.agent.llm_manager)
+            configure_llm_ui(self.llm_manager)
         elif command == 'exit':
             sys.exit(0)
         elif command == 'summary':
@@ -201,20 +310,6 @@ class BotuvicCLI:
 
         if welcome_msg:
             console.print(f"\n{welcome_msg}\n")
-
-        # Show current phase indicator
-        current_phase = self.agent.get_current_phase()
-        if current_phase:
-            phase_num = current_phase.get('phase_number', 1)
-            phase_name = current_phase.get('phase_name', 'Unknown')
-
-            # Show phase progress bar
-            total_phases = 8
-            current_num = min(phase_num, total_phases)
-            progress = "●" * current_num + "○" * (total_phases - current_num)
-
-            console.print(f"[dim]Phase {current_num}/{total_phases}: [#A855F7]{phase_name}[/#A855F7][/dim]")
-            console.print(f"[dim]{progress}[/dim]\n")
     
     def check_pending_actions(self):
         """Check for pending actions that need user approval."""

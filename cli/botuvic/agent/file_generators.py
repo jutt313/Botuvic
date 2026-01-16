@@ -123,12 +123,12 @@ Generate the content now:"""
             # Create team folder
             team_dir = os.path.join(self.project_dir, "team")
             os.makedirs(team_dir, exist_ok=True)
-
+            
             for member in team_members:
                 # Handle both dict and string formats
                 if isinstance(member, dict):
-                    member_name = member.get("name", "").lower().replace(" ", "-")
-                    member_role = member.get("role", "developer")
+                member_name = member.get("name", "").lower().replace(" ", "-")
+                member_role = member.get("role", "developer")
                 else:
                     # If member is a string, use it as name
                     member_name = str(member).lower().replace(" ", "-")
@@ -5866,127 +5866,127 @@ export default function {name}({{ children, className = '', ...props }}) {{
 }}"""
 
 
-def _create_nextjs_frontend(self, design: Dict) -> Dict[str, bool]:
-    """Create Next.js frontend."""
-    results = {}
-    from rich.console import Console
-    console = Console()
+    def _create_nextjs_frontend(self, design: Dict) -> Dict[str, bool]:
+        """Create Next.js frontend."""
+        results = {}
+        from rich.console import Console
+        console = Console()
 
-    folders = [
+        folders = [
         "frontend/src/app",
         "frontend/src/components",
         "frontend/src/lib",
         "frontend/public"
-    ]
-    for folder in folders:
-        os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
+        ]
+        for folder in folders:
+            os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
 
-    package_json = """{
-  "name": "frontend",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
-  },
-  "dependencies": {
-    "next": "14.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "axios": "^1.6.0"
-  },
-  "devDependencies": {
-    "tailwindcss": "^3.3.0",
-    "autoprefixer": "^10.4.0",
-    "postcss": "^8.4.0"
-  }
-}"""
-    results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
+        package_json = """{
+      "name": "frontend",
+      "version": "0.1.0",
+      "private": true,
+      "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start"
+      },
+      "dependencies": {
+        "next": "14.0.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "axios": "^1.6.0"
+      },
+      "devDependencies": {
+        "tailwindcss": "^3.3.0",
+        "autoprefixer": "^10.4.0",
+        "postcss": "^8.4.0"
+      }
+    }"""
+        results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
 
-    # next.config.js
-    next_config = """/** @type {import('next').NextConfig} */
-const nextConfig = {}
-module.exports = nextConfig"""
-    results["frontend/next.config.js"] = self._write_file("frontend/next.config.js", next_config)
+        # next.config.js
+        next_config = """/** @type {import('next').NextConfig} */
+    const nextConfig = {}
+    module.exports = nextConfig"""
+        results["frontend/next.config.js"] = self._write_file("frontend/next.config.js", next_config)
 
-    # tailwind.config.js
-    tailwind_config = """/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
-  theme: { extend: {} },
-  plugins: [],
-}"""
-    results["frontend/tailwind.config.js"] = self._write_file("frontend/tailwind.config.js", tailwind_config)
+        # tailwind.config.js
+        tailwind_config = """/** @type {import('tailwindcss').Config} */
+    module.exports = {
+      content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
+      theme: { extend: {} },
+      plugins: [],
+    }"""
+        results["frontend/tailwind.config.js"] = self._write_file("frontend/tailwind.config.js", tailwind_config)
 
-    # src/app/layout.jsx
-    layout_jsx = """import './globals.css'
+        # src/app/layout.jsx
+        layout_jsx = """import './globals.css'
 
-export const metadata = {
-  title: 'My App',
-  description: 'Built with Next.js',
-}
-
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  )
-}"""
-    results["frontend/src/app/layout.jsx"] = self._write_file("frontend/src/app/layout.jsx", layout_jsx)
-
-    # src/app/globals.css
-    globals_css = """@tailwind base;
-@tailwind components;
-@tailwind utilities;"""
-    results["frontend/src/app/globals.css"] = self._write_file("frontend/src/app/globals.css", globals_css)
-
-    # src/app/page.jsx
-    page_jsx = """'use client'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
-
-export default function Home() {
-  const router = useRouter()
-
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
+    export const metadata = {
+      title: 'My App',
+      description: 'Built with Next.js',
     }
-  }, [router])
 
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <h1 className="text-2xl font-bold p-8">Welcome to Next.js!</h1>
-    </div>
-  )
-}"""
-    results["frontend/src/app/page.jsx"] = self._write_file("frontend/src/app/page.jsx", page_jsx)
+    export default function RootLayout({ children }) {
+      return (
+        <html lang="en">
+          <body>{children}</body>
+        </html>
+      )
+    }"""
+        results["frontend/src/app/layout.jsx"] = self._write_file("frontend/src/app/layout.jsx", layout_jsx)
 
-    # src/app/login/page.jsx
-    os.makedirs(os.path.join(self.project_dir, "frontend/src/app/login"), exist_ok=True)
-    login_page = """'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+        # src/app/globals.css
+        globals_css = """@tailwind base;
+    @tailwind components;
+    @tailwind utilities;"""
+        results["frontend/src/app/globals.css"] = self._write_file("frontend/src/app/globals.css", globals_css)
 
-export default function Login() {
-  const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+        # src/app/page.jsx
+        page_jsx = """'use client'
+    import { useRouter } from 'next/navigation'
+    import { useEffect } from 'react'
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    // TODO: Call API
-    router.push('/')
-  }
+    export default function Home() {
+      const router = useRouter()
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+      useEffect(() => {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          router.push('/login')
+        }
+      }, [router])
+
+      return (
+        <div className="min-h-screen bg-gray-100">
+          <h1 className="text-2xl font-bold p-8">Welcome to Next.js!</h1>
+        </div>
+      )
+    }"""
+        results["frontend/src/app/page.jsx"] = self._write_file("frontend/src/app/page.jsx", page_jsx)
+
+        # src/app/login/page.jsx
+        os.makedirs(os.path.join(self.project_dir, "frontend/src/app/login"), exist_ok=True)
+        login_page = """'use client'
+    import { useState } from 'react'
+    import { useRouter } from 'next/navigation'
+
+    export default function Login() {
+      const router = useRouter()
+      const [email, setEmail] = useState('')
+      const [password, setPassword] = useState('')
+      const [loading, setLoading] = useState(false)
+
+      const handleSubmit = async (e) => {
+        e.preventDefault()
+        setLoading(true)
+        // TODO: Call API
+        router.push('/')
+      }
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
         <h2 className="text-2xl font-bold text-center mb-6">Login</h2>
         <form onSubmit={handleSubmit}>
           <input
@@ -6013,148 +6013,148 @@ export default function Login() {
             {loading ? 'Loading...' : 'Login'}
           </button>
         </form>
-      </div>
-    </div>
-  )
-}"""
-    results["frontend/src/app/login/page.jsx"] = self._write_file("frontend/src/app/login/page.jsx", login_page)
+          </div>
+        </div>
+      )
+    }"""
+        results["frontend/src/app/login/page.jsx"] = self._write_file("frontend/src/app/login/page.jsx", login_page)
 
-    results["frontend/.env.example"] = self._write_file("frontend/.env.example", "NEXT_PUBLIC_API_URL=http://localhost:8000")
-    console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Next.js frontend[/#F1F5F9] ✓")
-    return results
+        results["frontend/.env.example"] = self._write_file("frontend/.env.example", "NEXT_PUBLIC_API_URL=http://localhost:8000")
+        console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Next.js frontend[/#F1F5F9] ✓")
+        return results
 
-def _create_vuejs_frontend(self, design: Dict) -> Dict[str, bool]:
-    """Create Vue.js frontend."""
-    results = {}
-    from rich.console import Console
-    console = Console()
+    def _create_vuejs_frontend(self, design: Dict) -> Dict[str, bool]:
+        """Create Vue.js frontend."""
+        results = {}
+        from rich.console import Console
+        console = Console()
 
-    folders = [
+        folders = [
         "frontend/src/components",
         "frontend/src/views",
         "frontend/src/router",
         "frontend/src/services",
         "frontend/public"
+        ]
+        for folder in folders:
+            os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
+
+        package_json = """{
+      "name": "frontend",
+      "version": "0.1.0",
+      "private": true,
+      "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+      },
+      "dependencies": {
+        "vue": "^3.3.0",
+        "vue-router": "^4.2.0",
+        "axios": "^1.6.0"
+      },
+      "devDependencies": {
+        "@vitejs/plugin-vue": "^4.4.0",
+        "vite": "^5.0.0",
+        "tailwindcss": "^3.3.0",
+        "autoprefixer": "^10.4.0",
+        "postcss": "^8.4.0"
+      }
+    }"""
+        results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
+
+        # vite.config.js
+        vite_config = """import { defineConfig } from 'vite'
+    import vue from '@vitejs/plugin-vue'
+
+    export default defineConfig({
+      plugins: [vue()],
+      server: { port: 3000 }
+    })"""
+        results["frontend/vite.config.js"] = self._write_file("frontend/vite.config.js", vite_config)
+
+        # index.html
+        index_html = """<!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Vue App</title>
+      </head>
+      <body>
+        <div id="app"></div>
+        <script type="module" src="/src/main.js"></script>
+      </body>
+    </html>"""
+        results["frontend/index.html"] = self._write_file("frontend/index.html", index_html)
+
+        # src/main.js
+        main_js = """import { createApp } from 'vue'
+    import App from './App.vue'
+    import router from './router'
+    import './style.css'
+
+    createApp(App).use(router).mount('#app')"""
+        results["frontend/src/main.js"] = self._write_file("frontend/src/main.js", main_js)
+
+        # src/App.vue
+        app_vue = """<template>
+      <router-view />
+    </template>
+
+    <script>
+    export default {
+      name: 'App'
+    }
+    </script>"""
+        results["frontend/src/App.vue"] = self._write_file("frontend/src/App.vue", app_vue)
+
+        # src/style.css
+        style_css = """@tailwind base;
+    @tailwind components;
+    @tailwind utilities;"""
+        results["frontend/src/style.css"] = self._write_file("frontend/src/style.css", style_css)
+
+        # src/router/index.js
+        router_js = """import { createRouter, createWebHistory } from 'vue-router'
+    import Home from '../views/Home.vue'
+    import Login from '../views/Login.vue'
+
+    const routes = [
+      { path: '/', component: Home },
+      { path: '/login', component: Login }
     ]
-    for folder in folders:
-        os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
 
-    package_json = """{
-  "name": "frontend",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "vue": "^3.3.0",
-    "vue-router": "^4.2.0",
-    "axios": "^1.6.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^4.4.0",
-    "vite": "^5.0.0",
-    "tailwindcss": "^3.3.0",
-    "autoprefixer": "^10.4.0",
-    "postcss": "^8.4.0"
-  }
-}"""
-    results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
+    const router = createRouter({
+      history: createWebHistory(),
+      routes
+    })
 
-    # vite.config.js
-    vite_config = """import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
+    export default router"""
+        results["frontend/src/router/index.js"] = self._write_file("frontend/src/router/index.js", router_js)
 
-export default defineConfig({
-  plugins: [vue()],
-  server: { port: 3000 }
-})"""
-    results["frontend/vite.config.js"] = self._write_file("frontend/vite.config.js", vite_config)
+        # src/views/Home.vue
+        home_vue = """<template>
+      <div class="min-h-screen bg-gray-100">
+        <div class="p-8">
+          <h1 class="text-2xl font-bold">Welcome to Vue.js!</h1>
+        </div>
+      </div>
+    </template>
 
-    # index.html
-    index_html = """<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vue App</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
-</html>"""
-    results["frontend/index.html"] = self._write_file("frontend/index.html", index_html)
+    <script>
+    export default {
+      name: 'Home'
+    }
+    </script>"""
+        results["frontend/src/views/Home.vue"] = self._write_file("frontend/src/views/Home.vue", home_vue)
 
-    # src/main.js
-    main_js = """import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
-import './style.css'
-
-createApp(App).use(router).mount('#app')"""
-    results["frontend/src/main.js"] = self._write_file("frontend/src/main.js", main_js)
-
-    # src/App.vue
-    app_vue = """<template>
-  <router-view />
-</template>
-
-<script>
-export default {
-  name: 'App'
-}
-</script>"""
-    results["frontend/src/App.vue"] = self._write_file("frontend/src/App.vue", app_vue)
-
-    # src/style.css
-    style_css = """@tailwind base;
-@tailwind components;
-@tailwind utilities;"""
-    results["frontend/src/style.css"] = self._write_file("frontend/src/style.css", style_css)
-
-    # src/router/index.js
-    router_js = """import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'
-import Login from '../views/Login.vue'
-
-const routes = [
-  { path: '/', component: Home },
-  { path: '/login', component: Login }
-]
-
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-})
-
-export default router"""
-    results["frontend/src/router/index.js"] = self._write_file("frontend/src/router/index.js", router_js)
-
-    # src/views/Home.vue
-    home_vue = """<template>
-  <div class="min-h-screen bg-gray-100">
-    <div class="p-8">
-      <h1 class="text-2xl font-bold">Welcome to Vue.js!</h1>
-    </div>
-  </div>
-</template>
-
-<script>
-export default {
-  name: 'Home'
-}
-</script>"""
-    results["frontend/src/views/Home.vue"] = self._write_file("frontend/src/views/Home.vue", home_vue)
-
-    # src/views/Login.vue
-    login_vue = """<template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-100">
-    <div class="max-w-md w-full bg-white rounded-lg shadow-md p-8">
-      <h2 class="text-2xl font-bold text-center mb-6">Login</h2>
-      <form @submit.prevent="handleLogin">
+        # src/views/Login.vue
+        login_vue = """<template>
+      <div class="min-h-screen flex items-center justify-center bg-gray-100">
+        <div class="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+          <h2 class="text-2xl font-bold text-center mb-6">Login</h2>
+          <form @submit.prevent="handleLogin">
         <input
           v-model="email"
           type="email"
@@ -6175,91 +6175,91 @@ export default {
         >
           Login
         </button>
-      </form>
-    </div>
-  </div>
-</template>
+          </form>
+        </div>
+      </div>
+    </template>
 
-<script>
-export default {
-  data() {
-    return {
-      email: '',
-      password: ''
+    <script>
+    export default {
+      data() {
+        return {
+          email: '',
+          password: ''
+        }
+      },
+      methods: {
+        handleLogin() {
+          // TODO: Call API
+          this.$router.push('/')
+        }
+      }
     }
-  },
-  methods: {
-    handleLogin() {
-      // TODO: Call API
-      this.$router.push('/')
-    }
-  }
-}
-</script>"""
-    results["frontend/src/views/Login.vue"] = self._write_file("frontend/src/views/Login.vue", login_vue)
+    </script>"""
+        results["frontend/src/views/Login.vue"] = self._write_file("frontend/src/views/Login.vue", login_vue)
 
-    results["frontend/.env.example"] = self._write_file("frontend/.env.example", "VITE_API_URL=http://localhost:8000")
-    console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Vue.js frontend[/#F1F5F9] ✓")
-    return results
+        results["frontend/.env.example"] = self._write_file("frontend/.env.example", "VITE_API_URL=http://localhost:8000")
+        console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Vue.js frontend[/#F1F5F9] ✓")
+        return results
 
-def _create_angular_frontend(self, design: Dict) -> Dict[str, bool]:
-    """Create Angular frontend."""
-    results = {}
-    from rich.console import Console
-    console = Console()
+    def _create_angular_frontend(self, design: Dict) -> Dict[str, bool]:
+        """Create Angular frontend."""
+        results = {}
+        from rich.console import Console
+        console = Console()
 
-    folders = [
+        folders = [
         "frontend/src/app/components",
         "frontend/src/app/services",
         "frontend/src/assets"
-    ]
-    for folder in folders:
-        os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
+        ]
+        for folder in folders:
+            os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
 
-    package_json = """{
-  "name": "frontend",
-  "version": "0.0.0",
-  "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development"
-  },
-  "private": true,
-  "dependencies": {
-    "@angular/animations": "^17.0.0",
-    "@angular/common": "^17.0.0",
-    "@angular/compiler": "^17.0.0",
-    "@angular/core": "^17.0.0",
-    "@angular/forms": "^17.0.0",
-    "@angular/platform-browser": "^17.0.0",
-    "@angular/platform-browser-dynamic": "^17.0.0",
-    "@angular/router": "^17.0.0",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.3.0",
-    "zone.js": "~0.14.0"
-  },
-  "devDependencies": {
-    "@angular-devkit/build-angular": "^17.0.0",
-    "@angular/cli": "^17.0.0",
-    "@angular/compiler-cli": "^17.0.0",
-    "typescript": "~5.2.2"
-  }
-}"""
-    results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
+        package_json = """{
+      "name": "frontend",
+      "version": "0.0.0",
+      "scripts": {
+        "ng": "ng",
+        "start": "ng serve",
+        "build": "ng build",
+        "watch": "ng build --watch --configuration development"
+      },
+      "private": true,
+      "dependencies": {
+        "@angular/animations": "^17.0.0",
+        "@angular/common": "^17.0.0",
+        "@angular/compiler": "^17.0.0",
+        "@angular/core": "^17.0.0",
+        "@angular/forms": "^17.0.0",
+        "@angular/platform-browser": "^17.0.0",
+        "@angular/platform-browser-dynamic": "^17.0.0",
+        "@angular/router": "^17.0.0",
+        "rxjs": "~7.8.0",
+        "tslib": "^2.3.0",
+        "zone.js": "~0.14.0"
+      },
+      "devDependencies": {
+        "@angular-devkit/build-angular": "^17.0.0",
+        "@angular/cli": "^17.0.0",
+        "@angular/compiler-cli": "^17.0.0",
+        "typescript": "~5.2.2"
+      }
+    }"""
+        results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
 
-    # angular.json
-    angular_json = """{
-  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
-  "version": 1,
-  "newProjectRoot": "projects",
-  "projects": {
-    "frontend": {
-      "projectType": "application",
-      "root": "",
-      "sourceRoot": "src",
-      "prefix": "app",
-      "architect": {
+        # angular.json
+        angular_json = """{
+      "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+      "version": 1,
+      "newProjectRoot": "projects",
+      "projects": {
+        "frontend": {
+          "projectType": "application",
+          "root": "",
+          "sourceRoot": "src",
+          "prefix": "app",
+          "architect": {
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
@@ -6279,426 +6279,426 @@ def _create_angular_frontend(self, design: Dict) -> Dict[str, bool]:
             "port": 3000
           }
         }
+          }
+        }
       }
-    }
-  }
-}"""
-    results["frontend/angular.json"] = self._write_file("frontend/angular.json", angular_json)
+    }"""
+        results["frontend/angular.json"] = self._write_file("frontend/angular.json", angular_json)
 
-    # tsconfig.json
-    tsconfig = """{
-  "compileOnSave": false,
-  "compilerOptions": {
-    "baseUrl": "./",
-    "outDir": "./dist/out-tsc",
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noImplicitOverride": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "sourceMap": true,
-    "declaration": false,
-    "downlevelIteration": true,
-    "experimentalDecorators": true,
-    "moduleResolution": "node",
-    "importHelpers": true,
-    "target": "ES2022",
-    "module": "ES2022",
-    "useDefineForClassFields": false,
-    "lib": ["ES2022", "dom"]
-  }
-}"""
-    results["frontend/tsconfig.json"] = self._write_file("frontend/tsconfig.json", tsconfig)
+        # tsconfig.json
+        tsconfig = """{
+      "compileOnSave": false,
+      "compilerOptions": {
+        "baseUrl": "./",
+        "outDir": "./dist/out-tsc",
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "noImplicitOverride": true,
+        "noPropertyAccessFromIndexSignature": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "sourceMap": true,
+        "declaration": false,
+        "downlevelIteration": true,
+        "experimentalDecorators": true,
+        "moduleResolution": "node",
+        "importHelpers": true,
+        "target": "ES2022",
+        "module": "ES2022",
+        "useDefineForClassFields": false,
+        "lib": ["ES2022", "dom"]
+      }
+    }"""
+        results["frontend/tsconfig.json"] = self._write_file("frontend/tsconfig.json", tsconfig)
 
-    # src/index.html
-    index_html = """<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Angular App</title>
-  <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body>
-  <app-root></app-root>
-</body>
-</html>"""
-    results["frontend/src/index.html"] = self._write_file("frontend/src/index.html", index_html)
+        # src/index.html
+        index_html = """<!doctype html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <title>Angular App</title>
+      <base href="/">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body>
+      <app-root></app-root>
+    </body>
+    </html>"""
+        results["frontend/src/index.html"] = self._write_file("frontend/src/index.html", index_html)
 
-    # src/main.ts
-    main_ts = """import { bootstrapApplication } from '@angular/platform-browser';
-import { AppComponent } from './app/app.component';
+        # src/main.ts
+        main_ts = """import { bootstrapApplication } from '@angular/platform-browser';
+    import { AppComponent } from './app/app.component';
 
-bootstrapApplication(AppComponent)
-  .catch((err) => console.error(err));"""
-    results["frontend/src/main.ts"] = self._write_file("frontend/src/main.ts", main_ts)
+    bootstrapApplication(AppComponent)
+      .catch((err) => console.error(err));"""
+        results["frontend/src/main.ts"] = self._write_file("frontend/src/main.ts", main_ts)
 
-    # src/app/app.component.ts
-    app_component = """import { Component } from '@angular/core';
+        # src/app/app.component.ts
+        app_component = """import { Component } from '@angular/core';
 
-@Component({
-  selector: 'app-root',
-  standalone: true,
-  template: '<h1>Welcome to Angular!</h1>',
-  styles: []
-})
-export class AppComponent {
-  title = 'frontend';
-}"""
-    results["frontend/src/app/app.component.ts"] = self._write_file("frontend/src/app/app.component.ts", app_component)
+    @Component({
+      selector: 'app-root',
+      standalone: true,
+      template: '<h1>Welcome to Angular!</h1>',
+      styles: []
+    })
+    export class AppComponent {
+      title = 'frontend';
+    }"""
+        results["frontend/src/app/app.component.ts"] = self._write_file("frontend/src/app/app.component.ts", app_component)
 
-    # src/styles.css
-    styles_css = """* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}"""
-    results["frontend/src/styles.css"] = self._write_file("frontend/src/styles.css", styles_css)
+        # src/styles.css
+        styles_css = """* {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }"""
+        results["frontend/src/styles.css"] = self._write_file("frontend/src/styles.css", styles_css)
 
-    results["frontend/.env.example"] = self._write_file("frontend/.env.example", "API_URL=http://localhost:8000")
-    console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Angular frontend[/#F1F5F9] ✓")
-    return results
+        results["frontend/.env.example"] = self._write_file("frontend/.env.example", "API_URL=http://localhost:8000")
+        console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Angular frontend[/#F1F5F9] ✓")
+        return results
 
-def _create_svelte_frontend(self, design: Dict) -> Dict[str, bool]:
-    """Create Svelte frontend."""
-    results = {}
-    from rich.console import Console
-    console = Console()
+    def _create_svelte_frontend(self, design: Dict) -> Dict[str, bool]:
+        """Create Svelte frontend."""
+        results = {}
+        from rich.console import Console
+        console = Console()
 
-    folders = [
+        folders = [
         "frontend/src/routes",
         "frontend/src/lib",
         "frontend/static"
-    ]
-    for folder in folders:
-        os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
+        ]
+        for folder in folders:
+            os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
 
-    package_json = """{
-  "name": "frontend",
-  "version": "0.0.1",
-  "private": true,
-  "scripts": {
-    "dev": "vite dev --port 3000",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "@sveltejs/adapter-auto": "^2.0.0",
-    "@sveltejs/kit": "^1.20.0",
-    "svelte": "^4.0.0",
-    "vite": "^4.4.0"
-  },
-  "dependencies": {
-    "axios": "^1.6.0"
-  },
-  "type": "module"
-}"""
-    results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
+        package_json = """{
+      "name": "frontend",
+      "version": "0.0.1",
+      "private": true,
+      "scripts": {
+        "dev": "vite dev --port 3000",
+        "build": "vite build",
+        "preview": "vite preview"
+      },
+      "devDependencies": {
+        "@sveltejs/adapter-auto": "^2.0.0",
+        "@sveltejs/kit": "^1.20.0",
+        "svelte": "^4.0.0",
+        "vite": "^4.4.0"
+      },
+      "dependencies": {
+        "axios": "^1.6.0"
+      },
+      "type": "module"
+    }"""
+        results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
 
-    # svelte.config.js
-    svelte_config = """import adapter from '@sveltejs/adapter-auto';
+        # svelte.config.js
+        svelte_config = """import adapter from '@sveltejs/adapter-auto';
 
-export default {
-  kit: {
-    adapter: adapter()
-  }
-};"""
-    results["frontend/svelte.config.js"] = self._write_file("frontend/svelte.config.js", svelte_config)
+    export default {
+      kit: {
+        adapter: adapter()
+      }
+    };"""
+        results["frontend/svelte.config.js"] = self._write_file("frontend/svelte.config.js", svelte_config)
 
-    # vite.config.js
-    vite_config = """import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+        # vite.config.js
+        vite_config = """import { sveltekit } from '@sveltejs/kit/vite';
+    import { defineConfig } from 'vite';
 
-export default defineConfig({
-  plugins: [sveltekit()]
-});"""
-    results["frontend/vite.config.js"] = self._write_file("frontend/vite.config.js", vite_config)
+    export default defineConfig({
+      plugins: [sveltekit()]
+    });"""
+        results["frontend/vite.config.js"] = self._write_file("frontend/vite.config.js", vite_config)
 
-    # src/routes/+page.svelte
-    page_svelte = """<script>
-  let count = 0;
-</script>
+        # src/routes/+page.svelte
+        page_svelte = """<script>
+      let count = 0;
+    </script>
 
-<div class="container">
-  <h1>Welcome to Svelte!</h1>
-  <button on:click={() => count += 1}>
-    Count: {count}
-  </button>
-</div>
+    <div class="container">
+      <h1>Welcome to Svelte!</h1>
+      <button on:click={() => count += 1}>
+        Count: {count}
+      </button>
+    </div>
 
-<style>
-  .container {
-    padding: 2rem;
-  }
-  h1 {
-    font-size: 2rem;
-    font-weight: bold;
-  }
-</style>"""
-    results["frontend/src/routes/+page.svelte"] = self._write_file("frontend/src/routes/+page.svelte", page_svelte)
+    <style>
+      .container {
+        padding: 2rem;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: bold;
+      }
+    </style>"""
+        results["frontend/src/routes/+page.svelte"] = self._write_file("frontend/src/routes/+page.svelte", page_svelte)
 
-    # src/app.html
-    app_html = """<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    %sveltekit.head%
-  </head>
-  <body data-sveltekit-preload-data="hover">
-    <div style="display: contents">%sveltekit.body%</div>
-  </body>
-</html>"""
-    results["frontend/src/app.html"] = self._write_file("frontend/src/app.html", app_html)
+        # src/app.html
+        app_html = """<!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width" />
+        %sveltekit.head%
+      </head>
+      <body data-sveltekit-preload-data="hover">
+        <div style="display: contents">%sveltekit.body%</div>
+      </body>
+    </html>"""
+        results["frontend/src/app.html"] = self._write_file("frontend/src/app.html", app_html)
 
-    results["frontend/.env.example"] = self._write_file("frontend/.env.example", "VITE_API_URL=http://localhost:8000")
-    console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Svelte frontend[/#F1F5F9] ✓")
-    return results
+        results["frontend/.env.example"] = self._write_file("frontend/.env.example", "VITE_API_URL=http://localhost:8000")
+        console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Svelte frontend[/#F1F5F9] ✓")
+        return results
 
-def _create_react_native_frontend(self, design: Dict) -> Dict[str, bool]:
-    """Create React Native mobile app."""
-    results = {}
-    from rich.console import Console
-    console = Console()
+    def _create_react_native_frontend(self, design: Dict) -> Dict[str, bool]:
+        """Create React Native mobile app."""
+        results = {}
+        from rich.console import Console
+        console = Console()
 
-    folders = [
+        folders = [
         "frontend/src/screens",
         "frontend/src/components",
         "frontend/src/services",
         "frontend/android",
         "frontend/ios"
-    ]
-    for folder in folders:
-        os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
+        ]
+        for folder in folders:
+            os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
 
-    package_json = """{
-  "name": "frontend",
-  "version": "0.0.1",
-  "private": true,
-  "scripts": {
-    "android": "react-native run-android",
-    "ios": "react-native run-ios",
-    "start": "react-native start"
-  },
-  "dependencies": {
-    "react": "18.2.0",
-    "react-native": "0.72.0",
-    "@react-navigation/native": "^6.1.0",
-    "@react-navigation/stack": "^6.3.0",
-    "axios": "^1.6.0",
-    "react-native-safe-area-context": "^4.7.0",
-    "react-native-screens": "^3.25.0"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@babel/preset-env": "^7.20.0",
-    "@babel/runtime": "^7.20.0",
-    "metro-react-native-babel-preset": "0.76.0"
-  }
-}"""
-    results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
+        package_json = """{
+      "name": "frontend",
+      "version": "0.0.1",
+      "private": true,
+      "scripts": {
+        "android": "react-native run-android",
+        "ios": "react-native run-ios",
+        "start": "react-native start"
+      },
+      "dependencies": {
+        "react": "18.2.0",
+        "react-native": "0.72.0",
+        "@react-navigation/native": "^6.1.0",
+        "@react-navigation/stack": "^6.3.0",
+        "axios": "^1.6.0",
+        "react-native-safe-area-context": "^4.7.0",
+        "react-native-screens": "^3.25.0"
+      },
+      "devDependencies": {
+        "@babel/core": "^7.20.0",
+        "@babel/preset-env": "^7.20.0",
+        "@babel/runtime": "^7.20.0",
+        "metro-react-native-babel-preset": "0.76.0"
+      }
+    }"""
+        results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
 
-    # App.js
-    app_js = """import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import HomeScreen from './src/screens/HomeScreen';
-import LoginScreen from './src/screens/LoginScreen';
+        # App.js
+        app_js = """import React from 'react';
+    import { NavigationContainer } from '@react-navigation/native';
+    import { createStackNavigator } from '@react-navigation/stack';
+    import HomeScreen from './src/screens/HomeScreen';
+    import LoginScreen from './src/screens/LoginScreen';
 
-const Stack = createStackNavigator();
+    const Stack = createStackNavigator();
 
-export default function App() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
+    export default function App() {
+      return (
+        <NavigationContainer>
+          <Stack.Navigator initialRouteName="Login">
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-}"""
-    results["frontend/App.js"] = self._write_file("frontend/App.js", app_js)
+          </Stack.Navigator>
+        </NavigationContainer>
+      );
+    }"""
+        results["frontend/App.js"] = self._write_file("frontend/App.js", app_js)
 
-    # src/screens/HomeScreen.js
-    home_screen = """import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+        # src/screens/HomeScreen.js
+        home_screen = """import React from 'react';
+    import { View, Text, StyleSheet } from 'react-native';
 
-export default function HomeScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome to React Native!</Text>
-    </View>
-  );
-}
+    export default function HomeScreen() {
+      return (
+        <View style={styles.container}>
+          <Text style={styles.title}>Welcome to React Native!</Text>
+        </View>
+      );
+    }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-});"""
-    results["frontend/src/screens/HomeScreen.js"] = self._write_file("frontend/src/screens/HomeScreen.js", home_screen)
+    const styles = StyleSheet.create({
+      container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+      },
+      title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+      },
+    });"""
+        results["frontend/src/screens/HomeScreen.js"] = self._write_file("frontend/src/screens/HomeScreen.js", home_screen)
 
-    # src/screens/LoginScreen.js
-    login_screen = """import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+        # src/screens/LoginScreen.js
+        login_screen = """import React, { useState } from 'react';
+    import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
 
-export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+    export default function LoginScreen({ navigation }) {
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    // TODO: Call API
-    navigation.navigate('Home');
-  };
+      const handleLogin = () => {
+        // TODO: Call API
+        navigation.navigate('Home');
+      };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      <TextInput
+      return (
+        <View style={styles.container}>
+          <Text style={styles.title}>Login</Text>
+          <TextInput
         style={styles.input}
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
-      />
-      <TextInput
+          />
+          <TextInput
         style={styles.input}
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
-      />
-      <Button title="Login" onPress={handleLogin} />
-    </View>
-  );
-}
+          />
+          <Button title="Login" onPress={handleLogin} />
+        </View>
+      );
+    }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
-  },
-});"""
-    results["frontend/src/screens/LoginScreen.js"] = self._write_file("frontend/src/screens/LoginScreen.js", login_screen)
+    const styles = StyleSheet.create({
+      container: {
+        flex: 1,
+        justifyContent: 'center',
+        padding: 20,
+      },
+      title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        textAlign: 'center',
+      },
+      input: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        padding: 10,
+        marginBottom: 10,
+        borderRadius: 5,
+      },
+    });"""
+        results["frontend/src/screens/LoginScreen.js"] = self._write_file("frontend/src/screens/LoginScreen.js", login_screen)
 
-    results["frontend/.env.example"] = self._write_file("frontend/.env.example", "API_URL=http://localhost:8000")
-    console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created React Native frontend[/#F1F5F9] ✓")
-    return results
+        results["frontend/.env.example"] = self._write_file("frontend/.env.example", "API_URL=http://localhost:8000")
+        console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created React Native frontend[/#F1F5F9] ✓")
+        return results
 
-def _create_flutter_frontend(self, design: Dict) -> Dict[str, bool]:
-    """Create Flutter mobile app."""
-    results = {}
-    from rich.console import Console
-    console = Console()
+    def _create_flutter_frontend(self, design: Dict) -> Dict[str, bool]:
+        """Create Flutter mobile app."""
+        results = {}
+        from rich.console import Console
+        console = Console()
 
-    folders = [
+        folders = [
         "frontend/lib/screens",
         "frontend/lib/services",
         "frontend/lib/widgets",
         "frontend/android",
         "frontend/ios"
-    ]
-    for folder in folders:
-        os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
+        ]
+        for folder in folders:
+            os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
 
-    # pubspec.yaml
-    pubspec = """name: frontend
-description: Flutter mobile app
-publish_to: 'none'
-version: 1.0.0+1
+        # pubspec.yaml
+        pubspec = """name: frontend
+    description: Flutter mobile app
+    publish_to: 'none'
+    version: 1.0.0+1
 
-environment:
-  sdk: '>=3.0.0 <4.0.0'
+    environment:
+      sdk: '>=3.0.0 <4.0.0'
 
-dependencies:
-  flutter:
-    sdk: flutter
-  http: ^1.1.0
-  provider: ^6.0.0
+    dependencies:
+      flutter:
+        sdk: flutter
+      http: ^1.1.0
+      provider: ^6.0.0
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^2.0.0
+    dev_dependencies:
+      flutter_test:
+        sdk: flutter
+      flutter_lints: ^2.0.0
 
-flutter:
-  uses-material-design: true"""
-    results["frontend/pubspec.yaml"] = self._write_file("frontend/pubspec.yaml", pubspec)
+    flutter:
+      uses-material-design: true"""
+        results["frontend/pubspec.yaml"] = self._write_file("frontend/pubspec.yaml", pubspec)
 
-    # lib/main.dart
-    main_dart = """import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
+        # lib/main.dart
+        main_dart = """import 'package:flutter/material.dart';
+    import 'screens/login_screen.dart';
+    import 'screens/home_screen.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+    void main() {
+      runApp(const MyApp());
+    }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+    class MyApp extends StatelessWidget {
+      const MyApp({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter App',
-      theme: ThemeData(
+      @override
+      Widget build(BuildContext context) {
+        return MaterialApp(
+          title: 'Flutter App',
+          theme: ThemeData(
         primarySwatch: Colors.blue,
-      ),
-      initialRoute: '/login',
-      routes: {
+          ),
+          initialRoute: '/login',
+          routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
-      },
-    );
-  }
-}"""
-    results["frontend/lib/main.dart"] = self._write_file("frontend/lib/main.dart", main_dart)
+          },
+        );
+      }
+    }"""
+        results["frontend/lib/main.dart"] = self._write_file("frontend/lib/main.dart", main_dart)
 
-    # lib/screens/login_screen.dart
-    login_screen = """import 'package:flutter/material.dart';
+        # lib/screens/login_screen.dart
+        login_screen = """import 'package:flutter/material.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+    class LoginScreen extends StatefulWidget {
+      const LoginScreen({super.key});
 
-  @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
+      @override
+      State<LoginScreen> createState() => _LoginScreenState();
+    }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+    class _LoginScreenState extends State<LoginScreen> {
+      final _emailController = TextEditingController();
+      final _passwordController = TextEditingController();
 
-  void _handleLogin() {
-    // TODO: Call API
-    Navigator.pushReplacementNamed(context, '/home');
-  }
+      void _handleLogin() {
+        // TODO: Call API
+        Navigator.pushReplacementNamed(context, '/home');
+      }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
+      @override
+      Widget build(BuildContext context) {
+        return Scaffold(
+          body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -6731,44 +6731,44 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}"""
-    results["frontend/lib/screens/login_screen.dart"] = self._write_file("frontend/lib/screens/login_screen.dart", login_screen)
+          ),
+        );
+      }
+    }"""
+        results["frontend/lib/screens/login_screen.dart"] = self._write_file("frontend/lib/screens/login_screen.dart", login_screen)
 
-    # lib/screens/home_screen.dart
-    home_screen = """import 'package:flutter/material.dart';
+        # lib/screens/home_screen.dart
+        home_screen = """import 'package:flutter/material.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+    class HomeScreen extends StatelessWidget {
+      const HomeScreen({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+      @override
+      Widget build(BuildContext context) {
+        return Scaffold(
+          appBar: AppBar(
         title: const Text('Home'),
-      ),
-      body: const Center(
+          ),
+          body: const Center(
         child: Text(
           'Welcome to Flutter!',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-      ),
-    );
-  }
-}"""
-    results["frontend/lib/screens/home_screen.dart"] = self._write_file("frontend/lib/screens/home_screen.dart", home_screen)
+          ),
+        );
+      }
+    }"""
+        results["frontend/lib/screens/home_screen.dart"] = self._write_file("frontend/lib/screens/home_screen.dart", home_screen)
 
-    results["frontend/.env.example"] = self._write_file("frontend/.env.example", "API_URL=http://localhost:8000")
-    console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Flutter frontend[/#F1F5F9] ✓")
-    return results
+        results["frontend/.env.example"] = self._write_file("frontend/.env.example", "API_URL=http://localhost:8000")
+        console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Flutter frontend[/#F1F5F9] ✓")
+        return results
 
-def _create_swift_frontend(self, design: Dict) -> Dict[str, bool]:
+    def _create_swift_frontend(self, design: Dict) -> Dict[str, bool]:
         """Create Swift iOS app DYNAMICALLY from design."""
-    results = {}
-    from rich.console import Console
-    console = Console()
+        results = {}
+        from rich.console import Console
+        console = Console()
 
         # Get pages from design
         pages = design.get("pages", ["Login", "Home"])
@@ -6785,22 +6785,22 @@ def _create_swift_frontend(self, design: Dict) -> Dict[str, bool]:
         if "Login" not in page_names:
             page_names.insert(0, "Login")
 
-    folders = [
+        folders = [
             "ios/App",
             "ios/Views",
             "ios/Services",
             "ios/Models",
             "ios/Components"
-    ]
-    for folder in folders:
-        os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
+        ]
+        for folder in folders:
+            os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
         console.print(f"[#A855F7]⏺[/#A855F7] Created iOS folders ✓")
 
         # App/App.swift (SwiftUI App)
         view_imports = "\n".join([f"        {name}View()" for name in page_names[:3]])
         app_swift = f"""import SwiftUI
 
-@main
+    @main
 struct MainApp: App {{
     @StateObject private var authManager = AuthManager()
 
@@ -7019,12 +7019,12 @@ API_BASE_URL=http://localhost:8000/api
         if page_name.lower() == "login":
             return """import SwiftUI
 
-struct LoginView: View {
+    struct LoginView: View {
     @EnvironmentObject var authManager: AuthManager
-    @State private var email = ""
-    @State private var password = ""
+        @State private var email = ""
+        @State private var password = ""
 
-    var body: some View {
+        var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
                 Spacer()
@@ -7109,7 +7109,7 @@ struct RegisterView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
 
-    var body: some View {
+        var body: some View {
         VStack(spacing: 24) {
             Text("Create Account")
                 .font(.largeTitle)
@@ -7315,11 +7315,11 @@ struct ContentPlaceholder: View {{
 }}
 """
 
-def _create_kotlin_frontend(self, design: Dict) -> Dict[str, bool]:
+    def _create_kotlin_frontend(self, design: Dict) -> Dict[str, bool]:
         """Create dynamic Kotlin Android app based on design pages."""
-    results = {}
-    from rich.console import Console
-    console = Console()
+        results = {}
+        from rich.console import Console
+        console = Console()
 
         # Get project info
         project_info = self.storage.load("project_info") or self.storage.load("project") or {}
@@ -7360,7 +7360,7 @@ def _create_kotlin_frontend(self, design: Dict) -> Dict[str, bool]:
         console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Creating Kotlin Android frontend: {project_name}[/#F1F5F9]")
 
         # Create folders
-    folders = [
+        folders = [
             f"frontend/app/src/main/java/com/{package_name}",
             f"frontend/app/src/main/java/com/{package_name}/ui/activities",
             f"frontend/app/src/main/java/com/{package_name}/ui/fragments",
@@ -7373,9 +7373,9 @@ def _create_kotlin_frontend(self, design: Dict) -> Dict[str, bool]:
             "frontend/app/src/main/res/values",
             "frontend/app/src/main/res/drawable",
             "frontend/app/src/main/res/navigation"
-    ]
-    for folder in folders:
-        os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
+        ]
+        for folder in folders:
+            os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
         console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Android folders[/#F1F5F9] ✓")
 
         # Project-level build.gradle
@@ -7394,15 +7394,15 @@ task clean(type: Delete) {{
 
         # App-level build.gradle with dependencies
         app_build_gradle = f"""plugins {{
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
+        id 'com.android.application'
+        id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
     id 'com.google.dagger.hilt.android'
 }}
 
 android {{
     namespace '{package_path}'
-    compileSdk 34
+        compileSdk 34
 
     defaultConfig {{
         applicationId "{package_path}"
@@ -7438,9 +7438,9 @@ android {{
 
 dependencies {{
     // Core Android
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.10.0'
+        implementation 'androidx.core:core-ktx:1.12.0'
+        implementation 'androidx.appcompat:appcompat:1.6.1'
+        implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
     // Navigation
@@ -7453,7 +7453,7 @@ dependencies {{
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
 
     // Networking
-    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+        implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
 
@@ -7825,8 +7825,8 @@ class AuthRepository @Inject constructor(
         main_activity = f"""package {package_path}.ui.activities
 
 import android.content.Intent
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+    import android.os.Bundle
+    import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import {package_path}.data.repository.AuthRepository
 import {package_path}.databinding.ActivityMainBinding
@@ -7875,9 +7875,9 @@ class MainActivity : AppCompatActivity() {{
         login_activity = f"""package {package_path}.ui.activities
 
 import android.content.Intent
-import android.os.Bundle
+    import android.os.Bundle
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+    import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import {package_path}.data.repository.AuthRepository
 import {package_path}.databinding.ActivityLoginBinding
@@ -8481,7 +8481,7 @@ class {page_name}Activity : AppCompatActivity() {{
 """
         results["frontend/app/proguard-rules.pro"] = self._write_file("frontend/app/proguard-rules.pro", proguard)
 
-    # README.md
+        # README.md
         readme_content = f"""# {project_name} - Android App
 
 ## Overview
@@ -8516,7 +8516,7 @@ app/
 │       └── drawable/         # Icons and images
 ```
 
-## Setup
+    ## Setup
 
 1. Open project in Android Studio
 2. Sync Gradle files
@@ -8548,77 +8548,77 @@ Generated by BOTUVIC
         results["frontend/README.md"] = self._write_file("frontend/README.md", readme_content)
 
         console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Kotlin Android frontend with {len(results)} files[/#F1F5F9] ✓")
-    return results
+        return results
 
-def _create_electron_frontend(self, design: Dict) -> Dict[str, bool]:
-    """Create Electron desktop app."""
-    results = {}
-    from rich.console import Console
-    console = Console()
+    def _create_electron_frontend(self, design: Dict) -> Dict[str, bool]:
+        """Create Electron desktop app."""
+        results = {}
+        from rich.console import Console
+        console = Console()
 
-    folders = [
+        folders = [
         "frontend/src",
         "frontend/public"
-    ]
-    for folder in folders:
-        os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
+        ]
+        for folder in folders:
+            os.makedirs(os.path.join(self.project_dir, folder), exist_ok=True)
 
-    package_json = """{
-  "name": "frontend",
-  "version": "1.0.0",
-  "main": "main.js",
-  "scripts": {
-    "start": "electron .",
-    "dev": "electron ."
-  },
-  "dependencies": {
-    "electron": "^27.0.0"
-  }
-}"""
-    results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
+        package_json = """{
+      "name": "frontend",
+      "version": "1.0.0",
+      "main": "main.js",
+      "scripts": {
+        "start": "electron .",
+        "dev": "electron ."
+      },
+      "dependencies": {
+        "electron": "^27.0.0"
+      }
+    }"""
+        results["frontend/package.json"] = self._write_file("frontend/package.json", package_json)
 
-    # main.js
-    main_js = """const { app, BrowserWindow } = require('electron')
-const path = require('path')
+        # main.js
+        main_js = """const { app, BrowserWindow } = require('electron')
+    const path = require('path')
 
-function createWindow() {
-  const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
+    function createWindow() {
+      const win = new BrowserWindow({
+        width: 1200,
+        height: 800,
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: false
+        }
+      })
+
+      win.loadFile('src/index.html')
     }
-  })
 
-  win.loadFile('src/index.html')
-}
-
-app.whenReady().then(() => {
-  createWindow()
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    app.whenReady().then(() => {
       createWindow()
-    }
-  })
-})
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
-})"""
-    results["frontend/main.js"] = self._write_file("frontend/main.js", main_js)
+      app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+          createWindow()
+        }
+      })
+    })
 
-    # src/index.html
-    index_html = """<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Electron App</title>
-    <style>
-      body {
+    app.on('window-all-closed', () => {
+      if (process.platform !== 'darwin') {
+        app.quit()
+      }
+    })"""
+        results["frontend/main.js"] = self._write_file("frontend/main.js", main_js)
+
+        # src/index.html
+        index_html = """<!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Electron App</title>
+        <style>
+          body {
         font-family: Arial, sans-serif;
         display: flex;
         justify-content: center;
@@ -8626,95 +8626,95 @@ app.on('window-all-closed', () => {
         height: 100vh;
         margin: 0;
         background: #f0f0f0;
-      }
-      .container {
+          }
+          .container {
         text-align: center;
-      }
-      h1 {
+          }
+          h1 {
         font-size: 2rem;
         color: #333;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>Welcome to Electron!</h1>
-      <p>Desktop app built with Electron</p>
-    </div>
-  </body>
-</html>"""
-    results["frontend/src/index.html"] = self._write_file("frontend/src/index.html", index_html)
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Welcome to Electron!</h1>
+          <p>Desktop app built with Electron</p>
+        </div>
+      </body>
+    </html>"""
+        results["frontend/src/index.html"] = self._write_file("frontend/src/index.html", index_html)
 
-    console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Electron desktop frontend[/#F1F5F9] ✓")
-    return results
+        console.print(f"[#A855F7]⏺[/#A855F7] [#F1F5F9]Created Electron desktop frontend[/#F1F5F9] ✓")
+        return results
 
     def _generate_frontend_md_old(self, frontend_name: str, design: Dict) -> str:
         """OLD - Generate comprehensive frontend.md documentation."""
         content = f"""# Frontend Setup Guide
 
-## Overview
+    ## Overview
 
-This frontend is built with **{frontend_name}**.
+    This frontend is built with **{frontend_name}**.
 
-## Installation
+    ## Installation
 
-```bash
-cd frontend
-npm install
-```
+    ```bash
+    cd frontend
+    npm install
+    ```
 
-## Running
+    ## Running
 
-```bash
-npm run dev
-```
+    ```bash
+    npm run dev
+    ```
 
-Frontend will start at http://localhost:3000
+    Frontend will start at http://localhost:3000
 
-## Project Structure
+    ## Project Structure
 
-```
-frontend/
-├── src/
-│   ├── components/  # Reusable components
-│   ├── pages/       # Page components
-│   ├── services/    # API services
-│   ├── hooks/       # Custom hooks
-│   └── utils/       # Utility functions
-├── public/          # Static assets
-└── package.json
-```
+    ```
+    frontend/
+    ├── src/
+    │   ├── components/  # Reusable components
+    │   ├── pages/       # Page components
+    │   ├── services/    # API services
+    │   ├── hooks/       # Custom hooks
+    │   └── utils/       # Utility functions
+    ├── public/          # Static assets
+    └── package.json
+    ```
 
-## Features
+    ## Features
 
-- Authentication (Login/Register)
-- API integration
-- Routing
-- Tailwind CSS styling
+    - Authentication (Login/Register)
+    - API integration
+    - Routing
+    - Tailwind CSS styling
 
-## Environment Variables
+    ## Environment Variables
 
-Copy `.env.example` to `.env`:
+    Copy `.env.example` to `.env`:
 
-```bash
-cp .env.example .env
-```
+    ```bash
+    cp .env.example .env
+    ```
 
-Set your backend URL in `.env`:
-```
-VITE_API_URL=http://localhost:8000
-```
+    Set your backend URL in `.env`:
+    ```
+    VITE_API_URL=http://localhost:8000
+    ```
 
-## Building for Production
+    ## Building for Production
 
-```bash
-npm run build
-```
+    ```bash
+    npm run build
+    ```
 
----
+    ---
 
-Built with BOTUVIC
-"""
+    Built with BOTUVIC
+    """
         return content
     
     def _generate_prd_md(self, project: Dict, profile: Dict) -> bool:
@@ -8963,15 +8963,15 @@ Built with BOTUVIC
                                 content += f"- {idx}\n"
             else:
                 # Dict format
-                for table_name, table_info in tables.items():
-                    indexes = table_info.get("indexes", [])
-                    if indexes:
-                        content += f"\n**{table_name}**:\n"
-                        for idx in indexes:
+            for table_name, table_info in tables.items():
+                indexes = table_info.get("indexes", [])
+                if indexes:
+                    content += f"\n**{table_name}**:\n"
+                    for idx in indexes:
                             if isinstance(idx, dict):
                                 content += f"- {idx.get('name', 'index')} on {', '.join(idx.get('fields', []))}\n"
                             else:
-                                content += f"- {idx}\n"
+                        content += f"- {idx}\n"
 
         content += """
     ### Query Optimization
@@ -9410,11 +9410,11 @@ Built with BOTUVIC
             for page in pages:
                 # Handle both string and dict formats
                 if isinstance(page, dict):
-                    page_name = page.get("name", "Page")
-                    route = page.get("route", "/")
-                    description = page.get("description", "")
-                    components = page.get("components", [])
-                    user_flow = page.get("user_flow", [])
+                page_name = page.get("name", "Page")
+                route = page.get("route", "/")
+                description = page.get("description", "")
+                components = page.get("components", [])
+                user_flow = page.get("user_flow", [])
                 else:
                     # Page is a string
                     page_name = str(page)
@@ -9422,17 +9422,17 @@ Built with BOTUVIC
                     description = f"{page_name} page"
                     components = []
                     user_flow = []
-
+            
                 content += f"### {page_name}\n\n"
                 content += f"**Route**: `{route}`\n\n"
                 content += f"**Description**: {description}\n\n"
-
+            
                 if components:
                     content += "**Components Needed**:\n"
                     for comp in components:
                         content += f"- {comp}\n"
                     content += "\n"
-
+            
                 content += "**Layout**:\n"
                 content += f"```\n"
                 content += f"+------------------------------------------+\n"
@@ -9443,19 +9443,19 @@ Built with BOTUVIC
                 content += f"|                                          |\n"
                 content += f"+------------------------------------------+\n"
                 content += f"```\n\n"
-
+            
                 if user_flow:
                     content += "**User Flow**:\n"
                     for i, step in enumerate(user_flow, 1):
                         content += f"{i}. {step}\n"
                     content += "\n"
-
+            
                 content += "**State Management**:\n"
                 content += f"- Loading state (show skeleton/spinner)\n"
                 content += f"- Error state (show error message)\n"
                 content += f"- Empty state (show empty message)\n"
                 content += f"- Success state (show content)\n\n"
-
+            
                 content += "---\n\n"
 
         content += """

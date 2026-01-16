@@ -193,3 +193,72 @@ def log_request(logger: logging.Logger, method: str, path: str, status_code: int
         f"REQUEST: {method} {path} | Status: {status_code} | Duration: {duration_ms:.2f}ms{user_info}"
     )
 
+def log_user_message(logger: logging.Logger, message: str, project_id: str):
+    """
+    Log user message clearly and visibly in RED.
+    
+    Args:
+        logger: Logger instance
+        message: User message content
+        project_id: Project ID
+    """
+    RED = '\033[91m'
+    RESET = '\033[0m'
+    
+    logger.info("")
+    logger.info("=" * 100)
+    logger.info(f"{RED}👤 USER MESSAGE RECEIVED{RESET}")
+    logger.info("=" * 100)
+    logger.info(f"{RED}Project: {project_id}{RESET}")
+    logger.info("")
+    logger.info(f"{RED}Message Content:{RESET}")
+    logger.info("-" * 100)
+    message_lines = message.split('\n')
+    for line in message_lines:
+        logger.info(f"{RED}   {line}{RESET}")
+    logger.info("-" * 100)
+    logger.info("")
+
+def log_agent_response(logger: logging.Logger, response: str, project_id: str, agent_name: str = "BOTUVIC"):
+    """
+    Log agent response clearly and visibly in BLUE.
+    
+    Args:
+        logger: Logger instance
+        response: Agent response content
+        project_id: Project ID
+        agent_name: Name of the agent (default: BOTUVIC)
+    """
+    BLUE = '\033[94m'
+    RESET = '\033[0m'
+    
+    logger.info("")
+    logger.info("=" * 100)
+    logger.info(f"{BLUE}🤖 {agent_name} RESPONSE{RESET}")
+    logger.info("=" * 100)
+    logger.info(f"{BLUE}Project: {project_id}{RESET}")
+    logger.info("")
+    logger.info(f"{BLUE}Response Content:{RESET}")
+    logger.info("-" * 100)
+    response_lines = response.split('\n')
+    for line in response_lines:
+        logger.info(f"{BLUE}   {line}{RESET}")
+    logger.info("-" * 100)
+    logger.info("")
+
+def log_agent_processing(logger: logging.Logger, step: str, details: Optional[dict] = None):
+    """
+    Log agent processing step clearly.
+    
+    Args:
+        logger: Logger instance
+        step: Processing step description
+        details: Optional dictionary with step details
+    """
+    logger.info("")
+    logger.info("⚙️  AGENT PROCESSING:")
+    logger.info(f"   Step: {step}")
+    if details:
+        for key, value in details.items():
+            logger.info(f"   {key}: {value}")
+    logger.info("")

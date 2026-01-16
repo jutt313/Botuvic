@@ -59,11 +59,21 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     if body_bytes:
                         try:
                             body_json = json.loads(body_bytes.decode())
-                            # Mask sensitive fields
+                            # Mask sensitive fields but show message content clearly
                             if isinstance(body_json, dict):
-                                masked_body = {k: "***" if k.lower() in ["password", "token", "secret", "key"] else v 
+                                # Don't mask message content - show it clearly
+                                masked_body = {k: "***" if k.lower() in ["password", "token", "secret", "key"] and k.lower() != "message" else v 
                                              for k, v in body_json.items()}
-                                logger.info(f"   Request Body: {json.dumps(masked_body, indent=2)}")
+                                
+                                # Special formatting for message endpoints
+                                if path.endswith("/messages") and "message" in masked_body:
+                                    logger.info(f"   Request Body:")
+                                    logger.info(f"      role: {masked_body.get('role', 'unknown')}")
+                                    logger.info(f"      message: {masked_body.get('message', '')[:500]}")
+                                    if len(masked_body.get('message', '')) > 500:
+                                        logger.info(f"      ... (truncated, full length: {len(masked_body.get('message', ''))} chars)")
+                                else:
+                                    logger.info(f"   Request Body: {json.dumps(masked_body, indent=2)}")
                             else:
                                 logger.info(f"   Request Body: {str(body_json)[:200]}...")
                         except json.JSONDecodeError:

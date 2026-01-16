@@ -639,7 +639,7 @@ if schema complete with columns, types, constraints:
 ```python
 save_to_storage("database_schema", {
     "tables": [
-        {
+    {
       "name": "users",
             "columns": [
                 {"name": "id", "type": "UUID", "constraints": "PRIMARY KEY"},

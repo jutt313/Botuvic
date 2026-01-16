@@ -7,7 +7,7 @@ from models import (
     ResetPassword, UserResponse, TokenResponse, RegisterResponse,
     UserProfileUpdate
 )
-from typing import Union, Dict, Optional
+from typing import Union, Dict, Optional, List
 from pydantic import BaseModel
 import time
 from utils.logger import get_logger, log_step, log_error_with_context
@@ -147,8 +147,10 @@ async def login(credentials: UserLogin):
         user_profile = admin_client.table("users").select("*").eq("id", response.user.id).execute()
         
         user_name = None
+        user_avatar = None
         if user_profile.data:
             user_name = user_profile.data[0].get("name")
+            user_avatar = user_profile.data[0].get("avatar_url")
             log_step(logger, "User profile retrieved", {"name": user_name})
         
         logger.info(f"STEP: Login complete - user authenticated")
@@ -158,6 +160,7 @@ async def login(credentials: UserLogin):
                 id=response.user.id,
                 email=response.user.email or "",
                 name=user_name,
+                avatar_url=user_avatar,
                 email_verified=response.user.email_confirmed_at is not None
             )
         )
@@ -294,6 +297,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             id=user_response.user.id,
             email=user_response.user.email or "",
             name=user_data.get("name"),
+            avatar_url=user_data.get("avatar_url"),
             email_verified=user_response.user.email_confirmed_at is not None,
             experience_level=user_data.get("experience_level"),
             tech_knowledge=user_data.get("tech_knowledge") or [],
@@ -372,6 +376,7 @@ async def update_profile(
             id=user_response.user.id,
             email=user_response.user.email or "",
             name=updated_profile.get("name"),
+            avatar_url=updated_profile.get("avatar_url"),
             email_verified=user_response.user.email_confirmed_at is not None,
             experience_level=updated_profile.get("experience_level"),
             tech_knowledge=updated_profile.get("tech_knowledge") or [],
@@ -487,4 +492,194 @@ async def get_cli_session(session_id: str):
             "error_type": type(e).__name__
         })
         raise HTTPException(status_code=500, detail="Failed to retrieve session")
+
+# LLM Management Endpoints
+class LLMAdd(BaseModel):
+    provider: str
+    model: Optional[str] = None
+    api_key: str
+
+class LLMResponse(BaseModel):
+    id: str
+    provider: str
+    model: Optional[str] = None
+    is_active: bool = True
+    is_default: bool = False
+    last_used_at: Optional[str] = None
+
+@router.get("/llms", response_model=List[LLMResponse])
+async def get_llms(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get all LLM configurations for the user"""
+    log_step(logger, "Get LLMs request started")
+    
+    try:
+        supabase = get_supabase_client()
+        user_response = supabase.auth.get_user(credentials.credentials)
+        
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        admin_client = get_supabase_admin_client()
+        llms = admin_client.table("api_keys").select("*").eq("user_id", user_response.user.id).execute()
+        
+        return [
+            LLMResponse(
+                id=str(llm.get("id")),
+                provider=llm.get("provider"),
+                model=None,  # Model not stored in api_keys table
+                is_active=llm.get("is_active", True),
+                is_default=llm.get("is_default", False),
+                last_used_at=llm.get("last_used_at")
+            )
+            for llm in (llms.data or [])
+        ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error_with_context(logger, e, {"endpoint": "/llms"})
+        raise HTTPException(status_code=500, detail=f"Failed to get LLMs: {str(e)}")
+
+@router.post("/llms", response_model=LLMResponse)
+async def add_llm(llm_data: LLMAdd, credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Add a new LLM configuration"""
+    log_step(logger, "Add LLM request started", {"provider": llm_data.provider})
+    
+    try:
+        supabase = get_supabase_client()
+        user_response = supabase.auth.get_user(credentials.credentials)
+        
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        admin_client = get_supabase_admin_client()
+        
+        # Encrypt API key (simple base64 for now - should use proper encryption in production)
+        import base64
+        api_key_encrypted = base64.b64encode(llm_data.api_key.encode()).decode()
+        
+        # Check if provider already exists
+        existing = admin_client.table("api_keys").select("*").eq("user_id", user_response.user.id).eq("provider", llm_data.provider).execute()
+        
+        if existing.data:
+            # Update existing
+            result = admin_client.table("api_keys").update({
+                "api_key_encrypted": api_key_encrypted,
+                "is_active": True
+            }).eq("id", existing.data[0]["id"]).execute()
+            llm = result.data[0]
+        else:
+            # Create new
+            result = admin_client.table("api_keys").insert({
+                "user_id": user_response.user.id,
+                "provider": llm_data.provider,
+                "api_key_encrypted": api_key_encrypted,
+                "is_active": True,
+                "is_default": False
+            }).execute()
+            llm = result.data[0]
+        
+        return LLMResponse(
+            id=str(llm.get("id")),
+            provider=llm.get("provider"),
+            is_active=llm.get("is_active", True),
+            is_default=llm.get("is_default", False),
+            last_used_at=llm.get("last_used_at")
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error_with_context(logger, e, {"endpoint": "/llms", "provider": llm_data.provider})
+        raise HTTPException(status_code=500, detail=f"Failed to add LLM: {str(e)}")
+
+@router.delete("/llms/{llm_id}")
+async def remove_llm(llm_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Remove an LLM configuration"""
+    log_step(logger, "Remove LLM request started", {"llm_id": llm_id})
+    
+    try:
+        supabase = get_supabase_client()
+        user_response = supabase.auth.get_user(credentials.credentials)
+        
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        admin_client = get_supabase_admin_client()
+        
+        # Verify ownership
+        llm = admin_client.table("api_keys").select("*").eq("id", llm_id).eq("user_id", user_response.user.id).execute()
+        
+        if not llm.data:
+            raise HTTPException(status_code=404, detail="LLM not found")
+        
+        # Delete
+        admin_client.table("api_keys").delete().eq("id", llm_id).execute()
+        
+        return {"message": "LLM removed successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error_with_context(logger, e, {"endpoint": "/llms", "llm_id": llm_id})
+        raise HTTPException(status_code=500, detail=f"Failed to remove LLM: {str(e)}")
+
+# Danger Zone Endpoints
+@router.delete("/projects/all")
+async def delete_all_projects(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Delete all projects for the user"""
+    log_step(logger, "Delete all projects request started")
+    
+    try:
+        supabase = get_supabase_client()
+        user_response = supabase.auth.get_user(credentials.credentials)
+        
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        admin_client = get_supabase_admin_client()
+        
+        # Delete all projects
+        result = admin_client.table("projects").delete().eq("user_id", user_response.user.id).execute()
+        
+        deleted_count = len(result.data) if result.data else 0
+        log_step(logger, f"Deleted {deleted_count} projects", {"user_id": user_response.user.id})
+        
+        return {"message": f"Deleted {deleted_count} projects successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error_with_context(logger, e, {"endpoint": "/projects/all"})
+        raise HTTPException(status_code=500, detail=f"Failed to delete projects: {str(e)}")
+
+@router.delete("/account")
+async def delete_account(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Delete user account and all associated data"""
+    log_step(logger, "Delete account request started")
+    
+    try:
+        supabase = get_supabase_client()
+        user_response = supabase.auth.get_user(credentials.credentials)
+        
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        user_id = user_response.user.id
+        admin_client = get_supabase_admin_client()
+        
+        # Delete all user data (cascade will handle related records)
+        # Projects, API keys, etc. will be deleted via CASCADE
+        admin_client.table("users").delete().eq("id", user_id).execute()
+        
+        # Delete auth user (requires admin)
+        from supabase import create_client
+        from config import settings
+        admin_supabase = create_client(settings.supabase_url, settings.supabase_service_key)
+        admin_supabase.auth.admin.delete_user(user_id)
+        
+        log_step(logger, "Account deleted successfully", {"user_id": user_id})
+        
+        return {"message": "Account deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error_with_context(logger, e, {"endpoint": "/account"})
+        raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")
 

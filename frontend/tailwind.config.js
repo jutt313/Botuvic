@@ -25,7 +25,7 @@ export default {
         warning: '#F59E0B',
         error: '#EF4444',
         background: {
-          DEFAULT: '#0F172A',
+          DEFAULT: '#1A0F2E',
           light: '#1E293B',
         },
         surface: '#1E293B',

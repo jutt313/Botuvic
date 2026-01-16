@@ -33,7 +33,10 @@ function ProtectedRoute({ children }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ 
+        background: 'linear-gradient(to top, #000000 0%, #000000 35%, #05020A 45%, #0A0514 55%, #0F0819 65%, #140B1F 75%, #1A0F2E 85%, #1A0F2E 100%)',
+        backgroundAttachment: 'fixed'
+      }}>
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="mt-4 text-text-muted">Loading...</p>

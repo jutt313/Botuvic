@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { User } from 'lucide-react';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { ProjectProgressChart } from '@/components/charts/ProjectProgressChart';
 import { TaskCompletionChart } from '@/components/charts/TaskCompletionChart';
 import { ProjectsTable } from '@/components/projects/ProjectsTable';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
 import { useTerminalTracking } from '@/hooks/useTerminalTracking';
 
 export const Dashboard = () => {
@@ -25,9 +25,7 @@ export const Dashboard = () => {
           </div>
           <div className="dashboard-header-actions">
             <NotificationDropdown />
-            <button className="icon-button" aria-label="Profile">
-              <User className="w-5 h-5" />
-            </button>
+            <ProfileDropdown />
           </div>
         </header>
         <StatsCards />

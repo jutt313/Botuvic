@@ -18,6 +18,8 @@ class ResetPassword(BaseModel):
     password: str
 
 class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
     experience_level: Optional[str] = None
     tech_knowledge: Optional[List[str]] = None
     coding_ability: Optional[str] = None
@@ -33,6 +35,7 @@ class UserResponse(BaseModel):
     id: str
     email: str
     name: Optional[str] = None
+    avatar_url: Optional[str] = None
     email_verified: bool = False
     experience_level: Optional[str] = None
     tech_knowledge: Optional[List[str]] = None

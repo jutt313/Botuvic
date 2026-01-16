@@ -1,6 +1,12 @@
 /* Purple monochrome theme - Black to subtle purple gradient */
 .auth-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   min-height: 100vh;
+  width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8,51 +14,65 @@
   background: linear-gradient(
     to top,
     #000000 0%,
-    #000000 30%,
-    #0A0514 50%,
-    #120A1F 70%,
+    #000000 35%,
+    #05020A 45%,
+    #0A0514 55%,
+    #0F0819 65%,
+    #140B1F 75%,
+    #1A0F2E 85%,
     #1A0F2E 100%
   );
-  position: relative;
+  z-index: 9999;
   overflow: hidden;
 }
 
-/* Subtle purple glow effect at top */
-.auth-container::before {
+
+/* Glassmorphism card effect */
+.auth-card {
+  background: rgba(23, 23, 23, 0.4);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 24px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  padding: 3rem;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.37),
+    0 0 0 1px rgba(168, 85, 247, 0.1) inset;
+  animation: slideUp 0.5s ease-out;
+  position: relative;
+  z-index: 1;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* Inner glow effect */
+.auth-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: radial-gradient(
-    ellipse at 50% 20%,
-    rgba(168, 85, 247, 0.08) 0%,
-    transparent 60%
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(168, 85, 247, 0.5),
+    transparent
   );
   pointer-events: none;
 }
 
-/* Dark card with purple border */
-.auth-card {
-  background: #171717;
-  border-radius: 24px;
-  border: 2px solid rgba(168, 85, 247, 0.4);
-  padding: 3rem;
-  width: 100%;
-  max-width: 450px;
-  box-shadow: 0 8px 32px 0 rgba(168, 85, 247, 0.2);
-  animation: slideUp 0.5s ease-out;
-  position: relative;
-  z-index: 1;
-  transition: all 0.3s ease;
-}
-
 /* Hover effect on card */
 .auth-card:hover {
-  border-color: rgba(168, 85, 247, 0.8);
-  box-shadow: 0 12px 48px 0 rgba(168, 85, 247, 0.4);
-  transform: translateY(-2px);
+  background: rgba(23, 23, 23, 0.5);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 
+    0 12px 48px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(168, 85, 247, 0.2) inset,
+    0 0 80px rgba(168, 85, 247, 0.25);
+  transform: translateY(-4px);
 }
 
 @keyframes slideUp {
@@ -101,9 +121,11 @@
 
 .form-group input {
   padding: 0.875rem 1rem;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  border: 1px solid rgba(168, 85, 247, 0.2);
   border-radius: 12px;
-  background: #000000;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   font-size: 1rem;
   color: #FFFFFF;
   transition: all 0.3s ease;
@@ -111,9 +133,13 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #A855F7;
-  background: #0F0F0F;
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 
+    0 0 0 3px rgba(168, 85, 247, 0.15),
+    0 4px 12px rgba(168, 85, 247, 0.1);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
 }
 
 .form-group input::placeholder {
@@ -134,7 +160,7 @@
 
 .auth-button {
   padding: 0.875rem 1.5rem;
-  background: #A855F7;
+  background: linear-gradient(135deg, #A855F7 0%, #9333EA 100%);
   color: #FFFFFF;
   border: none;
   border-radius: 12px;
@@ -143,12 +169,39 @@
   cursor: pointer;
   transition: all 0.3s ease;
   margin-top: 0.5rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 
+    0 4px 15px rgba(168, 85, 247, 0.3),
+    0 0 0 1px rgba(168, 85, 247, 0.2) inset;
+}
+
+.auth-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.auth-button:hover:not(:disabled)::before {
+  left: 100%;
 }
 
 .auth-button:hover:not(:disabled) {
-  background: #9333EA;
+  background: linear-gradient(135deg, #9333EA 0%, #7C3AED 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+  box-shadow: 
+    0 6px 20px rgba(168, 85, 247, 0.5),
+    0 0 0 1px rgba(168, 85, 247, 0.3) inset;
 }
 
 .auth-button:active:not(:disabled) {
@@ -184,12 +237,15 @@
 
 .auth-error {
   padding: 1rem;
-  background: rgba(248, 113, 113, 0.1);
+  background: rgba(248, 113, 113, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(248, 113, 113, 0.3);
   border-radius: 12px;
   color: #F87171;
   font-size: 0.9rem;
   margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(248, 113, 113, 0.1);
 }
 
 .auth-success {

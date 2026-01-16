@@ -283,7 +283,15 @@ class LLMManager:
         # Prepare tools if provided
         if functions:
             # Format functions as tools for OpenAI-style API
-            tools = [{"type": "function", "function": f} for f in functions]
+            # Check if already wrapped (has "type" and "function" keys)
+            tools = []
+            for f in functions:
+                if isinstance(f, dict) and f.get("type") == "function" and "function" in f:
+                    # Already in correct format
+                    tools.append(f)
+                else:
+                    # Wrap it
+                    tools.append({"type": "function", "function": f})
             settings["tools"] = tools
             settings["tool_choice"] = "auto"
 

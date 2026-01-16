@@ -3,10 +3,11 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import Client
+from supabase_auth.errors import AuthApiError
 from database import get_supabase_admin_client
 from typing import List
 from pydantic import BaseModel
-from utils.logger import get_logger, log_step, log_error_with_context
+from utils.logger import get_logger, log_step, log_error_with_context, log_user_message, log_agent_response, log_agent_processing
 
 logger = get_logger(__name__)
 
@@ -31,6 +32,15 @@ async def save_message(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Save a conversation message"""
+    # ============================================================
+    # TRANSPARENT LOGGING - SHOW EVERYTHING
+    # ============================================================
+    # Show message content clearly based on role
+    if message_data.role == "user":
+        log_user_message(logger, message_data.message, project_id)
+    elif message_data.role == "assistant":
+        log_agent_response(logger, message_data.message, project_id)
+    
     log_step(logger, "Save message request started", {"project_id": project_id, "role": message_data.role})
     
     try:
@@ -42,7 +52,25 @@ async def save_message(
         from config import settings
         supabase = create_client(settings.supabase_url, settings.supabase_anon_key)
 
-        user_response = supabase.auth.get_user(credentials.credentials)
+        try:
+            user_response = supabase.auth.get_user(credentials.credentials)
+        except AuthApiError as e:
+            # Handle expired or invalid tokens
+            error_msg = str(e)
+            if "expired" in error_msg.lower() or "invalid" in error_msg.lower():
+                log_error_with_context(logger, e, {
+                    "endpoint": "/messages",
+                    "project_id": project_id,
+                    "error_type": "TokenExpiredError"
+                })
+                raise HTTPException(status_code=401, detail="Token expired. Please login again.")
+            else:
+                log_error_with_context(logger, e, {
+                    "endpoint": "/messages",
+                    "project_id": project_id,
+                    "error_type": "AuthApiError"
+                })
+                raise HTTPException(status_code=401, detail="Invalid authentication token.")
 
         if not user_response.user:
             log_error_with_context(logger, Exception("Not authenticated"), {
@@ -88,6 +116,15 @@ async def save_message(
         msg = result.data[0]
         log_step(logger, "Message saved successfully", {"message_id": msg.get("id"), "project_id": project_id})
         
+        # Show success confirmation
+        logger.info("")
+        logger.info("✅ MESSAGE SAVED SUCCESSFULLY")
+        logger.info(f"   Message ID: {msg.get('id')}")
+        logger.info(f"   Role: {message_data.role.upper()}")
+        logger.info(f"   Project: {project_id}")
+        logger.info("=" * 100)
+        logger.info("")
+        
         logger.info(f"STEP: Save message complete")
         return MessageResponse(
             id=str(msg.get("id")),
@@ -124,7 +161,25 @@ async def get_messages(
         from config import settings
         supabase = create_client(settings.supabase_url, settings.supabase_anon_key)
 
-        user_response = supabase.auth.get_user(credentials.credentials)
+        try:
+            user_response = supabase.auth.get_user(credentials.credentials)
+        except AuthApiError as e:
+            # Handle expired or invalid tokens
+            error_msg = str(e)
+            if "expired" in error_msg.lower() or "invalid" in error_msg.lower():
+                log_error_with_context(logger, e, {
+                    "endpoint": "/messages",
+                    "project_id": project_id,
+                    "error_type": "TokenExpiredError"
+                })
+                raise HTTPException(status_code=401, detail="Token expired. Please login again.")
+            else:
+                log_error_with_context(logger, e, {
+                    "endpoint": "/messages",
+                    "project_id": project_id,
+                    "error_type": "AuthApiError"
+                })
+                raise HTTPException(status_code=401, detail="Invalid authentication token.")
 
         if not user_response.user:
             log_error_with_context(logger, Exception("Not authenticated"), {
@@ -199,7 +254,25 @@ async def clear_messages(
         from config import settings
         supabase = create_client(settings.supabase_url, settings.supabase_anon_key)
 
-        user_response = supabase.auth.get_user(credentials.credentials)
+        try:
+            user_response = supabase.auth.get_user(credentials.credentials)
+        except AuthApiError as e:
+            # Handle expired or invalid tokens
+            error_msg = str(e)
+            if "expired" in error_msg.lower() or "invalid" in error_msg.lower():
+                log_error_with_context(logger, e, {
+                    "endpoint": "/messages/clear",
+                    "project_id": project_id,
+                    "error_type": "TokenExpiredError"
+                })
+                raise HTTPException(status_code=401, detail="Token expired. Please login again.")
+            else:
+                log_error_with_context(logger, e, {
+                    "endpoint": "/messages/clear",
+                    "project_id": project_id,
+                    "error_type": "AuthApiError"
+                })
+                raise HTTPException(status_code=401, detail="Invalid authentication token.")
 
         if not user_response.user:
             log_error_with_context(logger, Exception("Not authenticated"), {
