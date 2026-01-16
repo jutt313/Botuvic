@@ -198,32 +198,63 @@ You are NOT an "AI assistant" or "language model". You ARE BOTUVIC - one unified
 
 ---
 
-### PHASE 3: COMPLETE DESIGN
+### PHASE 3: SYSTEMS ENGINEERING & ARCHITECTURE
 
-**Goal:** Design everything in detail - database, API, frontend, folder structure
+**Goal:** Create a production-ready blueprint. Design sequentially: Data → Logic → UI.
+**Role:** Senior Systems Architect. You are responsible for data integrity and system scalability.
 
-**3A: DATABASE DESIGN (100% Complete)**
-- For EVERY table: name, columns, types, constraints, primary key, foreign keys, indexes, relationships
+**THE ENGINEERING PROTOCOL (Strict Sequential Flow):**
 
-**3B: API DESIGN (Every Endpoint)**
-- For EVERY endpoint: Method, Path, Auth required, Request body schema, Response schema, Database operations
+**STEP 3A: DATA ARCHITECTURE (The Foundation)**
+   - **Action:** DO NOT ask "What tables do you want?".
+   - **Intelligence:** Based on Phase 1 (e.g., "SaaS"), you MUST proactively propose standard tables: `Users`, `Profiles`, `Subscriptions` (Stripe/LemonSqueezy), `Notifications`, `AuditLogs`.
+   - **AI Data:** If AI project, define `Vectors` table (dimensions, model used) and `ChatHistory` table.
+   - **Relationships:** Define strict foreign keys (e.g., `Users` 1:N `Posts`).
+   - **Constraint:** *Stop and get User Confirmation on the Database Schema before moving to Backend.*
 
-**3C: FRONTEND DESIGN (Every Page & Component)**
-- For EVERY page: Name, route, purpose, components used, API calls made, state needed
-- For EVERY component: Name, purpose, Props interface, State variables, API calls, User interactions
+**STEP 3B: BACKEND & API LOGIC (The Brain)**
+   - **Action:** Design the API to serve the Database defined in 3A.
+   - **Structure:** Define Routes, Controllers, and Services.
+   - **Security:** Define Middleware (e.g., `RequireAuth`, `RateLimit`, `AdminOnly`).
+   - **AI Pipeline (If applicable):**
+     - Design the "Thinking Flow": User Input → Embedding → Vector Search (RAG) → LLM Synthesis → Output.
+     - Define the exact *System Prompt* structure.
 
-**3D: FOLDER STRUCTURE (Every File)**
-- Generate complete folder structure matching the tech stack
+**STEP 3C: FRONTEND & UI ARCHITECTURE (The Face)**
+   - **Action:** Design the UI to consume the API defined in 3B.
+   - **Component Logic:** Map `Page` → `Components` → `State` → `Specific API Endpoint`.
+   - **State Strategy:** "Global Store (User/Auth)" vs "Local State (Form Inputs)".
+   - **UX Patterns:** Define Loading states, Error boundaries, and Optimistic UI updates.
 
-**Phase 3 Checklist (Must pass before Phase 4):**
-- [ ] All database tables defined with columns
-- [ ] All relationships mapped
-- [ ] All API endpoints defined
-- [ ] All pages defined
-- [ ] All components defined
-- [ ] Complete folder structure
-- [ ] Documentation outlined
-- [ ] User confirmed design
+**STEP 3D: FILE STRUCTURE (The Skeleton)**
+   - **Action:** Generate the folder tree *matching* the decisions above.
+   - **Pattern:** Use industry standards (e.g., "Feature-Sliced Design" or "Clean Architecture").
+
+**PHASE 3 OUTPUT SUMMARY (The Master Plan):**
+---------------------------------------------------------
+**ENGINEERING SPEC: [Project Name]**
+**1. Data Schema (Frozen):**
+   - [Table: Users] (Fields: email, role, stripe_id...)
+   - [Table: Subscriptions] (Fields: status, period_end...)
+   - [Table: Custom_Entity] (Fields...)
+**2. Backend Logic:**
+   - [Auth Middleware Strategy]
+   - [Core API Routes identified]
+   - [AI RAG Pipeline defined] (if AI)
+**3. Frontend Architecture:**
+   - [State Management Choice]
+   - [Key Pages & Component Tree]
+**4. Implementation Plan:**
+   - [Folder Structure Tree]
+---------------------------------------------------------
+
+**Phase 3 Checklist (Sequential Approval):**
+- [ ] **DB Schema validated** (Standard SaaS tables included? Relationships solid?).
+- [ ] **Backend API designed** (Matches the DB structure? Security included?).
+- [ ] **Frontend designed** (Connected to specific API endpoints?).
+- [ ] **AI Prompts & Vectors designed** (if AI project).
+- [ ] Folder structure generated based on the above.
+- [ ] User confirmed the Master Plan.
 
 ---
 
@@ -270,7 +301,7 @@ Start monitoring with config for file watching, error detection, terminal monito
 - Phase 3: Best practices, design patterns, API design
 
 **Search Rules:**
-1. Always include year - Add "2025" to get latest info
+1. Always include year - Add "2025" and "202 to get latest info
 2. Be specific - Include use case in query
 3. Compare options - Search "[A] vs [B] 2025" for comparisons
 4. Verify info - Cross-reference multiple sources
@@ -889,36 +920,48 @@ JSON:"""
         return extracted
 
     def _extract_design_data(self, user_message: str, response: str) -> Dict[str, Any]:
-        """Extract design data from conversation."""
+        """Extract design data from conversation per new Phase 3 Systems Engineering."""
         extracted = {}
 
-        extraction_prompt = f"""Extract design information from this conversation.
+        extraction_prompt = f"""Extract design information from this conversation per the new Phase 3 Systems Engineering protocol.
 
 User said: "{user_message}"
 
 Current data: {json.dumps(self.phase_data.get('design', {}))}
 
-Extract and return ONLY a JSON object with any NEW information:
+Extract and return ONLY a JSON object with any NEW information (following sequential flow: Data → Logic → UI):
 {{
-    "database": {{
+    "data_schema": {{
         "tables": [
-            {{"name": "users", "columns": [...], "relationships": [...]}},
+            {{"name": "users", "fields": ["email", "role", "stripe_id"], "relationships": ["1:N posts"]}},
+            {{"name": "subscriptions", "fields": ["status", "period_end"], "relationships": ["N:1 users"]}},
             ...
-        ]
+        ],
+        "standard_tables_included": ["Users", "Profiles", "Subscriptions", "Notifications", "AuditLogs"] if SaaS project,
+        "ai_tables": [
+            {{"name": "vectors", "dimensions": 1536, "model": "text-embedding-ada-002"}},
+            {{"name": "chat_history", "fields": ["user_id", "message", "response"]}}
+        ] if AI project
     }},
-    "api": {{
-        "endpoints": [
-            {{"method": "GET", "path": "/api/users", "description": "..."}},
-            ...
-        ]
+    "backend_logic": {{
+        "middleware_strategy": "RequireAuth, RateLimit, AdminOnly if mentioned",
+        "core_routes": ["GET /api/users", "POST /api/subscriptions", ...],
+        "controllers": ["UserController", "SubscriptionController", ...],
+        "services": ["AuthService", "PaymentService", ...],
+        "ai_rag_pipeline": {{
+            "flow": "User Input → Embedding → Vector Search → LLM Synthesis → Output",
+            "system_prompt_structure": "exact prompt structure if mentioned"
+        }} if AI project
     }},
-    "frontend": {{
-        "pages": ["Home", "Dashboard", ...],
-        "components": ["Button", "Header", ...]
+    "frontend_architecture": {{
+        "state_management": "Global Store (Zustand/Redux) vs Local State strategy if mentioned",
+        "key_pages": ["Home", "Dashboard", "Settings", ...],
+        "component_tree": "Page → Components → State → API Endpoint mapping if mentioned",
+        "ux_patterns": ["Loading states", "Error boundaries", "Optimistic UI"] if mentioned
     }},
     "folder_structure": {{
-        "frontend": ["src", "components", ...],
-        "backend": ["app", "routers", ...]
+        "pattern": "Feature-Sliced Design or Clean Architecture if mentioned",
+        "tree": "complete folder tree matching decisions above"
     }}
 }}
 
@@ -998,10 +1041,33 @@ JSON:"""
         return has_required and has_frontend and has_rationale
 
     def _is_design_complete(self) -> bool:
-        """Check if design phase has all required data."""
+        """Check if design phase has all required data per new Phase 3 Systems Engineering."""
         design = self.phase_data.get("design", {})
-        required = ["database", "api", "frontend", "folder_structure"]
-        return all(design.get(key) for key in required)
+        
+        # Required fields per new Phase 3 sequential flow
+        required = [
+            "data_schema",           # 3A: Database schema (frozen)
+            "backend_logic",          # 3B: Backend & API logic
+            "frontend_architecture", # 3C: Frontend & UI architecture
+            "folder_structure"        # 3D: File structure
+        ]
+        
+        # Check required fields
+        has_required = all(design.get(key) for key in required)
+        
+        # Check that database schema has tables
+        data_schema = design.get("data_schema", {})
+        has_tables = bool(data_schema.get("tables") and len(data_schema.get("tables", [])) > 0)
+        
+        # Check that backend has middleware strategy
+        backend = design.get("backend_logic", {})
+        has_middleware = bool(backend.get("middleware_strategy"))
+        
+        # Check that frontend has state management choice
+        frontend = design.get("frontend_architecture", {})
+        has_state_strategy = bool(frontend.get("state_management"))
+        
+        return has_required and has_tables and has_middleware and has_state_strategy
 
     # =========================================================================
     # SUMMARIES
@@ -1142,15 +1208,68 @@ Does this look right? (yes/no)"""
         }
 
     def _show_design_summary(self) -> Dict[str, Any]:
-        """Show design summary for user confirmation."""
+        """Show design summary for user confirmation per new Phase 3 Master Plan."""
         design = self.phase_data["design"]
 
+        # Get data schema
+        data_schema = design.get("data_schema", {})
+        tables = data_schema.get("tables", [])
+        
+        # Format tables
+        if isinstance(tables, list):
+            tables_text = '\n'.join([f"   - [{table.get('name', 'Table')}] (Fields: {', '.join(table.get('fields', []))})" 
+                                    for table in tables])
+        else:
+            tables_text = f"   - {tables}"
+
+        # Get backend logic
+        backend = design.get("backend_logic", {})
+        middleware = backend.get("middleware_strategy", "Not specified")
+        api_routes = backend.get("core_routes", [])
+        ai_pipeline = backend.get("ai_rag_pipeline", "N/A - No AI features")
+        
+        # Format API routes
+        if isinstance(api_routes, list):
+            routes_text = '\n'.join([f"   - {route}" for route in api_routes])
+        else:
+            routes_text = f"   - {api_routes}"
+
+        # Get frontend architecture
+        frontend = design.get("frontend_architecture", {})
+        state_mgmt = frontend.get("state_management", "Not specified")
+        pages = frontend.get("key_pages", [])
+        
+        # Format pages
+        if isinstance(pages, list):
+            pages_text = '\n'.join([f"   - {page}" for page in pages])
+        else:
+            pages_text = f"   - {pages}"
+
+        # Get folder structure
+        folder_structure = design.get("folder_structure", "Not specified")
+
+        # Build summary per new Master Plan format
         summary = f"""
-**Design Summary:**
-- Database: {len(design.get('database', {}).get('tables', []))} tables designed
-- API: {len(design.get('api', {}).get('endpoints', []))} endpoints planned
-- Frontend: {len(design.get('frontend', {}).get('pages', []))} pages planned
-- Folder structure ready
+---------------------------------------------------------
+**ENGINEERING SPEC: {design.get('project_name', 'Your Project')}**
+
+**1. Data Schema (Frozen):**
+{tables_text}
+
+**2. Backend Logic:**
+   - **Auth Middleware Strategy:** {middleware}
+   - **Core API Routes:**
+{routes_text}
+   - **AI RAG Pipeline:** {ai_pipeline}
+
+**3. Frontend Architecture:**
+   - **State Management:** {state_mgmt}
+   - **Key Pages & Component Tree:**
+{pages_text}
+
+**4. Implementation Plan:**
+   - **Folder Structure:** {folder_structure}
+---------------------------------------------------------
 
 Ready to generate the project? (yes/no)"""
 
@@ -1158,7 +1277,7 @@ Ready to generate the project? (yes/no)"""
             "message": summary,
             "status": "awaiting_confirmation",
             "phase": "design"
-            }
+        }
 
     # =========================================================================
     # LLM HELPERS
