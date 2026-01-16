@@ -301,7 +301,7 @@ Start monitoring with config for file watching, error detection, terminal monito
 - Phase 3: Best practices, design patterns, API design
 
 **Search Rules:**
-1. Always include year - Add "2025" and "202 to get latest info
+1. Always include year - Add "2025" or "2026" to get latest info
 2. Be specific - Include use case in query
 3. Compare options - Search "[A] vs [B] 2025" for comparisons
 4. Verify info - Cross-reference multiple sources
@@ -1352,7 +1352,6 @@ INSTRUCTIONS:
     def _handle_status_request(self) -> Dict[str, Any]:
         """Handle status request."""
         phase_names = ["Project Idea", "Tech Stack", "Design", "Generation"]
-        current_name = phase_names[self.current_phase - 1]
 
         status_lines = []
         for i, name in enumerate(phase_names, 1):
@@ -1363,10 +1362,10 @@ INSTRUCTIONS:
             else:
                 status_lines.append(f"⏳ {name}")
 
-            return {
+        return {
             "message": "**Project Progress:**\n\n" + "\n".join(status_lines),
-                "status": "info"
-            }
+            "status": "info"
+        }
 
     def _handle_help(self) -> Dict[str, Any]:
         """Handle help request."""
@@ -1385,8 +1384,8 @@ Just chat normally - tell me what you want to build and I'll guide you step by s
 - "no" - Cancel or modify
 
 What would you like to do?""",
-                "status": "info"
-            }
+            "status": "info"
+        }
 
     def _handle_go_back(self, intent: Dict) -> Dict[str, Any]:
         """Handle go back request."""
