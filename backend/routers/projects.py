@@ -19,7 +19,11 @@ class ProjectResponse(BaseModel):
     description: str = None
     status: str = None
     path: str = None
+    progress_percentage: int = 0
+    current_phase: int = 1
+    total_phases: int = 1
     created_at: str = None
+    updated_at: str = None
 
 class ProjectCreate(BaseModel):
     name: str
@@ -71,9 +75,13 @@ async def get_user_projects(credentials: HTTPAuthorizationCredentials = Depends(
                 id=str(proj.get("id", "")),
                 name=proj.get("name", "Unnamed Project"),
                 description=proj.get("description"),
-                status=proj.get("status", "new"),
-                path=proj.get("path"),
-                created_at=str(proj.get("created_at", ""))
+                status=proj.get("status", "active"),
+                path=proj.get("path") or proj.get("local_path"),
+                progress_percentage=proj.get("progress_percentage", 0),
+                current_phase=proj.get("current_phase", 1),
+                total_phases=proj.get("total_phases", 1),
+                created_at=str(proj.get("created_at", "")),
+                updated_at=str(proj.get("updated_at", ""))
             )
             for proj in projects.data
         ]
@@ -132,9 +140,13 @@ async def get_project_by_path(
             id=str(proj.get("id", "")),
             name=proj.get("name", "Unnamed Project"),
             description=proj.get("description"),
-            status=proj.get("status", "new"),
-            path=proj.get("path"),
-            created_at=str(proj.get("created_at", ""))
+            status=proj.get("status", "active"),
+            path=proj.get("path") or proj.get("local_path"),
+            progress_percentage=proj.get("progress_percentage", 0),
+            current_phase=proj.get("current_phase", 1),
+            total_phases=proj.get("total_phases", 1),
+            created_at=str(proj.get("created_at", "")),
+            updated_at=str(proj.get("updated_at", ""))
         )
     except HTTPException:
         raise
@@ -212,9 +224,13 @@ async def create_project(
             id=str(proj.get("id", "")),
             name=proj.get("name"),
             description=proj.get("description"),
-            status=proj.get("status", "new"),
-            path=proj.get("path"),
-            created_at=str(proj.get("created_at", ""))
+            status=proj.get("status", "active"),
+            path=proj.get("path") or proj.get("local_path"),
+            progress_percentage=proj.get("progress_percentage", 0),
+            current_phase=proj.get("current_phase", 1),
+            total_phases=proj.get("total_phases", 1),
+            created_at=str(proj.get("created_at", "")),
+            updated_at=str(proj.get("updated_at", ""))
         )
     except HTTPException:
         raise
@@ -286,7 +302,6 @@ async def update_project_status(
             "error_type": type(e).__name__
         })
         raise HTTPException(status_code=500, detail=f"Failed to update status: {str(e)}")
-
 
 @router.delete("/{project_id}")
 async def delete_project(

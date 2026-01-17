@@ -7,18 +7,19 @@ import { TrendingUp } from 'lucide-react';
 export const ProjectProgressChart = () => {
   const { data: projects = [], isLoading } = useProjects();
 
-  // Generate clean weekly data
+  // Generate chart data from REAL project data
   const chartData = useMemo(() => {
-    if (!projects || projects.length === 0) return [];
+    if (!projects || projects.length === 0) return { days: [], projects: [] };
 
-    const days = [];
-    const today = new Date();
-    
-    // Get top 3 projects by recent activity
+    // Get top 3 projects by most recent update
     const topProjects = [...projects]
       .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
       .slice(0, 3);
 
+    // Build 7-day timeline
+    const days = [];
+    const today = new Date();
+    
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
@@ -26,11 +27,19 @@ export const ProjectProgressChart = () => {
       
       const dayData = { date: dateStr };
       
+      // For each project, show its progress (actual from DB)
       topProjects.forEach((project, idx) => {
-        const progress = project.progress_percentage || 0;
-        // Simulate gradual growth
-        const factor = (7 - i) / 7;
-        dayData[`p${idx}`] = Math.round(progress * factor);
+        const projectCreated = new Date(project.created_at);
+        const projectUpdated = new Date(project.updated_at || project.created_at);
+        
+        // Project progress: if project existed on this day, show its current progress
+        // Otherwise show 0 (project didn't exist yet)
+        if (date >= projectCreated) {
+          // Use actual progress_percentage from database
+          dayData[`p${idx}`] = project.progress_percentage || 0;
+        } else {
+          dayData[`p${idx}`] = 0;
+        }
       });
       
       days.push(dayData);
@@ -57,7 +66,7 @@ export const ProjectProgressChart = () => {
     );
   }
 
-  if (!chartData.days || chartData.days.length === 0) {
+  if (!chartData.projects || chartData.projects.length === 0) {
     return (
       <Card className="glass border-white/10">
         <CardHeader className="pb-2">
@@ -68,7 +77,7 @@ export const ProjectProgressChart = () => {
         </CardHeader>
         <CardContent>
           <div className="h-[280px] flex items-center justify-center text-white/40">
-            No project data yet
+            No projects yet
           </div>
         </CardContent>
       </Card>
@@ -86,10 +95,11 @@ export const ProjectProgressChart = () => {
             Project Progress
           </CardTitle>
           <div className="flex gap-4 text-xs">
-            {chartData.projects.slice(0, 3).map((p, i) => (
+            {chartData.projects.map((p, i) => (
               <div key={i} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[i] }}></div>
                 <span className="text-white/60 truncate max-w-[80px]">{p.name}</span>
+                <span className="text-white/40">({p.progress_percentage || 0}%)</span>
               </div>
             ))}
           </div>
@@ -122,9 +132,13 @@ export const ProjectProgressChart = () => {
                 fontSize: '12px',
               }}
               labelStyle={{ color: '#94A3B8' }}
-              formatter={(value) => [`${value}%`, 'Progress']}
+              formatter={(value, name, props) => {
+                const idx = parseInt(name.replace('p', ''));
+                const projectName = chartData.projects[idx]?.name || 'Project';
+                return [`${value}%`, projectName];
+              }}
             />
-            {chartData.projects.slice(0, 3).map((_, i) => (
+            {chartData.projects.map((_, i) => (
               <Line
                 key={i}
                 type="monotone"
