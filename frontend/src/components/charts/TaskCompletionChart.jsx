@@ -1,51 +1,49 @@
 import React, { useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useProjects } from '@/hooks/useProjects';
 import { ListTodo } from 'lucide-react';
 
 export const TaskCompletionChart = () => {
   const { data: projects = [], isLoading } = useProjects();
 
-  // Prepare project progress data
+  // Prepare stacked bar data for each project
   const chartData = useMemo(() => {
     if (!projects || projects.length === 0) return [];
 
-    // Get top 10 most recent projects for the chart
+    // Get top 8 most recent projects for the chart
     return [...projects]
       .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
-      .slice(0, 10)
-      .map(p => ({
-        name: p.name.length > 12 ? p.name.substring(0, 12) + '...' : p.name,
-        fullName: p.name,
-        progress: p.progress_percentage || 0,
-        currentPhase: p.current_phase || 1,
-        totalPhases: p.total_phases || 1,
-        phaseProgress: Math.round(((p.current_phase || 1) / (p.total_phases || 1)) * 100),
-        status: p.status || 'active',
-      }));
+      .slice(0, 8)
+      .map(p => {
+        const progress = p.progress_percentage || 0;
+        const currentPhase = p.current_phase || 1;
+        const totalPhases = p.total_phases || 1;
+        const phasesCompleted = Math.max(0, currentPhase - 1);
+        const phasesRemaining = totalPhases - currentPhase;
+        
+        return {
+          name: p.name.length > 8 ? p.name.substring(0, 8) + '..' : p.name,
+          fullName: p.name,
+          progress: progress,
+          remaining: 100 - progress,
+          phasesCompleted: phasesCompleted,
+          currentPhase: 1, // Current phase (always 1 for visualization)
+          phasesRemaining: phasesRemaining,
+          totalPhases: totalPhases,
+          status: p.status || 'active',
+        };
+      });
   }, [projects]);
 
   // Calculate summary stats
   const stats = useMemo(() => {
-    if (!projects.length) return { avgProgress: 0, totalPhases: 0, completed: 0 };
-    
+    if (!projects.length) return { avgProgress: 0, completed: 0 };
     const totalProgress = projects.reduce((sum, p) => sum + (p.progress_percentage || 0), 0);
     const avgProgress = Math.round(totalProgress / projects.length);
-    const totalPhases = projects.reduce((sum, p) => sum + (p.total_phases || 1), 0);
-    const completedPhases = projects.reduce((sum, p) => sum + (p.current_phase || 1) - 1, 0);
     const completed = projects.filter(p => (p.status || '').toLowerCase() === 'complete').length;
-    
-    return { avgProgress, totalPhases, completedPhases, completed };
+    return { avgProgress, completed };
   }, [projects]);
-
-  // Color based on progress
-  const getProgressColor = (progress) => {
-    if (progress >= 75) return '#10B981'; // Green
-    if (progress >= 50) return '#22C55E'; // Light green
-    if (progress >= 25) return '#EAB308'; // Yellow
-    return '#F59E0B'; // Orange
-  };
 
   if (isLoading) {
     return (
@@ -93,12 +91,16 @@ export const TaskCompletionChart = () => {
           </CardTitle>
           <div className="flex gap-4 text-xs">
             <div className="flex items-center gap-1.5">
-              <span className="text-white/60">Avg Progress</span>
-              <span className="text-white font-medium">{stats.avgProgress}%</span>
+              <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+              <span className="text-white/60">Done</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-white/60">Completed</span>
-              <span className="text-white font-medium">{stats.completed}/{projects.length}</span>
+              <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+              <span className="text-white/60">Remaining</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-white/60">Avg</span>
+              <span className="text-white font-medium">{stats.avgProgress}%</span>
             </div>
           </div>
         </div>
@@ -107,25 +109,23 @@ export const TaskCompletionChart = () => {
         <ResponsiveContainer width="100%" height={280}>
           <BarChart 
             data={chartData} 
-            layout="vertical" 
-            margin={{ top: 5, right: 30, left: 5, bottom: 5 }}
+            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
             <XAxis 
-              type="number" 
-              domain={[0, 100]}
-              stroke="#64748B"
-              fontSize={10}
-              tickLine={false}
-              tickFormatter={(v) => `${v}%`}
-            />
-            <YAxis 
-              type="category" 
               dataKey="name"
               stroke="#64748B"
               fontSize={10}
               tickLine={false}
-              width={80}
+              axisLine={false}
+            />
+            <YAxis 
+              domain={[0, 100]}
+              stroke="#64748B"
+              fontSize={10}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) => `${v}%`}
             />
             <Tooltip
               contentStyle={{
@@ -134,47 +134,40 @@ export const TaskCompletionChart = () => {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              labelStyle={{ color: '#E2E8F0', fontWeight: 'bold' }}
+              labelStyle={{ color: '#E2E8F0', fontWeight: 'bold', marginBottom: '4px' }}
               formatter={(value, name, props) => {
-                const data = props.payload;
-                return [
-                  <div key="tooltip" className="space-y-1">
-                    <div>Progress: <span className="text-cyan-400 font-medium">{data.progress}%</span></div>
-                    <div>Phase: <span className="text-purple-400 font-medium">{data.currentPhase}/{data.totalPhases}</span></div>
-                    <div>Status: <span className="text-emerald-400 font-medium">{data.status}</span></div>
-                  </div>,
-                  ''
-                ];
+                if (name === 'progress') return [`${value}%`, 'Completed'];
+                if (name === 'remaining') return [`${value}%`, 'Remaining'];
+                return [value, name];
               }}
-              labelFormatter={(label, payload) => payload[0]?.payload?.fullName || label}
+              labelFormatter={(label, payload) => {
+                if (payload && payload[0]) {
+                  const data = payload[0].payload;
+                  return `${data.fullName} (Phase ${data.currentPhase + data.phasesCompleted}/${data.totalPhases})`;
+                }
+                return label;
+              }}
             />
+            {/* Stacked bars: Progress (done) + Remaining */}
             <Bar 
               dataKey="progress" 
-              radius={[0, 4, 4, 0]}
-              maxBarSize={20}
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={getProgressColor(entry.progress)} />
-              ))}
-            </Bar>
+              stackId="a"
+              fill="#06B6D4"
+              radius={[0, 0, 0, 0]}
+              maxBarSize={40}
+              name="progress"
+            />
+            <Bar 
+              dataKey="remaining" 
+              stackId="a"
+              fill="#A855F7"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={40}
+              name="remaining"
+              fillOpacity={0.4}
+            />
           </BarChart>
         </ResponsiveContainer>
-        
-        {/* Phase indicators below chart */}
-        <div className="mt-3 pt-3 border-t border-white/5">
-          <div className="flex flex-wrap gap-2 text-xs">
-            {chartData.slice(0, 5).map((p, i) => (
-              <div key={i} className="flex items-center gap-2 bg-white/5 rounded px-2 py-1">
-                <span className="text-white/70 truncate max-w-[60px]">{p.name}</span>
-                <span className="text-purple-400">P{p.currentPhase}/{p.totalPhases}</span>
-                <span className="text-cyan-400">{p.progress}%</span>
-              </div>
-            ))}
-            {chartData.length > 5 && (
-              <span className="text-white/40 px-2 py-1">+{chartData.length - 5} more</span>
-            )}
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
