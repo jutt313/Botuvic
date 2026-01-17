@@ -1,51 +1,71 @@
 import React, { useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { useProjects } from '@/hooks/useProjects';
 import { TrendingUp } from 'lucide-react';
 
 export const ProjectProgressChart = () => {
   const { data: projects = [], isLoading } = useProjects();
 
-  // Generate chart data from REAL project data
-  const chartData = useMemo(() => {
-    if (!projects || projects.length === 0) return { days: [], projects: [] };
+  // Calculate status distribution for ALL projects
+  const statusData = useMemo(() => {
+    if (!projects || projects.length === 0) return [];
 
-    // Get top 3 projects by most recent update
-    const topProjects = [...projects]
-      .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
-      .slice(0, 3);
+    // Count projects by status
+    const statusCounts = {};
 
-    // Build 7-day timeline
-    const days = [];
-    const today = new Date();
-    
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    projects.forEach(p => {
+      const status = (p.status || 'active').toLowerCase().replace('_', ' ');
+      // Normalize status names
+      let displayStatus = status;
+      if (status === 'new') displayStatus = 'active';
+      if (status === 'in progress') displayStatus = 'in progress';
       
-      const dayData = { date: dateStr };
-      
-      // For each project, show its progress (actual from DB)
-      topProjects.forEach((project, idx) => {
-        const projectCreated = new Date(project.created_at);
-        const projectUpdated = new Date(project.updated_at || project.created_at);
-        
-        // Project progress: if project existed on this day, show its current progress
-        // Otherwise show 0 (project didn't exist yet)
-        if (date >= projectCreated) {
-          // Use actual progress_percentage from database
-          dayData[`p${idx}`] = project.progress_percentage || 0;
-        } else {
-          dayData[`p${idx}`] = 0;
+      statusCounts[displayStatus] = (statusCounts[displayStatus] || 0) + 1;
+    });
+
+    const colors = {
+      'active': '#10B981',
+      'in progress': '#06B6D4',
+      'in_progress': '#06B6D4',
+      'complete': '#A855F7',
+      'completed': '#A855F7',
+      'paused': '#F59E0B',
+      'archived': '#6B7280',
+    };
+
+    // Build chart data
+    return Object.entries(statusCounts).map(([name, value]) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      value,
+      color: colors[name] || '#06B6D4',
+    }));
+  }, [projects]);
+
+  // Calculate progress distribution
+  const progressData = useMemo(() => {
+    if (!projects || projects.length === 0) return [];
+
+    const ranges = [
+      { name: '0%', min: 0, max: 0, color: '#EF4444', value: 0 },
+      { name: '1-25%', min: 1, max: 25, color: '#F59E0B', value: 0 },
+      { name: '26-50%', min: 26, max: 50, color: '#EAB308', value: 0 },
+      { name: '51-75%', min: 51, max: 75, color: '#84CC16', value: 0 },
+      { name: '76-99%', min: 76, max: 99, color: '#22C55E', value: 0 },
+      { name: '100%', min: 100, max: 100, color: '#10B981', value: 0 },
+    ];
+
+    projects.forEach(p => {
+      const progress = p.progress_percentage || 0;
+      for (const range of ranges) {
+        if (progress >= range.min && progress <= range.max) {
+          range.value++;
+          break;
         }
-      });
-      
-      days.push(dayData);
-    }
-    
-    return { days, projects: topProjects };
+      }
+    });
+
+    return ranges;
   }, [projects]);
 
   if (isLoading) {
@@ -54,7 +74,7 @@ export const ProjectProgressChart = () => {
         <CardHeader className="pb-2">
           <CardTitle className="text-lg text-white/90 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-cyan-400" />
-            Project Progress
+            Project Overview
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -66,13 +86,13 @@ export const ProjectProgressChart = () => {
     );
   }
 
-  if (!chartData.projects || chartData.projects.length === 0) {
+  if (!projects || projects.length === 0) {
     return (
       <Card className="glass border-white/10">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg text-white/90 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-cyan-400" />
-            Project Progress
+            Project Overview
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -84,73 +104,103 @@ export const ProjectProgressChart = () => {
     );
   }
 
-  const colors = ['#06B6D4', '#A855F7', '#10B981']; // Cyan, Purple, Green
-
   return (
     <Card className="glass border-white/10">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg text-white/90 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-cyan-400" />
-            Project Progress
+            Project Overview
           </CardTitle>
-          <div className="flex gap-4 text-xs">
-            {chartData.projects.map((p, i) => (
-              <div key={i} className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[i] }}></div>
-                <span className="text-white/60 truncate max-w-[80px]">{p.name}</span>
-                <span className="text-white/40">({p.progress_percentage || 0}%)</span>
-              </div>
-            ))}
-          </div>
+          <span className="text-sm text-white/60 font-medium">{projects.length} projects</span>
         </div>
       </CardHeader>
       <CardContent className="pt-2">
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={chartData.days} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-            <XAxis 
-              dataKey="date" 
-              stroke="#64748B"
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis 
-              stroke="#64748B"
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-              domain={[0, 100]}
-              tickFormatter={(v) => `${v}%`}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                fontSize: '12px',
-              }}
-              labelStyle={{ color: '#94A3B8' }}
-              formatter={(value, name, props) => {
-                const idx = parseInt(name.replace('p', ''));
-                const projectName = chartData.projects[idx]?.name || 'Project';
-                return [`${value}%`, projectName];
-              }}
-            />
-            {chartData.projects.map((_, i) => (
-              <Line
-                key={i}
-                type="monotone"
-                dataKey={`p${i}`}
-                stroke={colors[i]}
-                strokeWidth={2}
-                dot={{ fill: colors[i], r: 3, strokeWidth: 0 }}
-                activeDot={{ r: 5, strokeWidth: 0 }}
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+        <div className="grid grid-cols-2 gap-6">
+          {/* Status Distribution - Pie Chart */}
+          <div>
+            <p className="text-xs text-white/50 mb-2 text-center">By Status</p>
+            <div className="flex items-center justify-center">
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                    labelLine={false}
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value, name) => [`${value} projects`, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Legend */}
+            <div className="flex flex-wrap justify-center gap-3 mt-2">
+              {statusData.map((item, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-xs">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></div>
+                  <span className="text-white/60">{item.name}</span>
+                  <span className="text-white/90 font-medium">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Progress Distribution - Bar Chart */}
+          <div>
+            <p className="text-xs text-white/50 mb-2 text-center">By Progress</p>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={progressData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis 
+                  dataKey="name"
+                  stroke="#64748B"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis 
+                  stroke="#64748B"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  labelStyle={{ color: '#94A3B8' }}
+                  formatter={(value) => [`${value} projects`, 'Count']}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                  {progressData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
