@@ -637,11 +637,10 @@ async def change_password(
             raise HTTPException(status_code=401, detail="Not authenticated")
         
         # Set session with current token, then update password
-        try:
-            supabase.auth.set_session(access_token=credentials.credentials, refresh_token="")
-            supabase.auth.update_user({
-                "password": password_data.new_password
-            })
+        supabase.auth.set_session(access_token=credentials.credentials, refresh_token="")
+        supabase.auth.update_user({
+            "password": password_data.new_password
+        })
         
         log_step(logger, "Password updated successfully")
         return {"message": "Password updated successfully"}
