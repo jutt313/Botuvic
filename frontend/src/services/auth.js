@@ -29,4 +29,27 @@ export const authService = {
     const response = await api.patch('/auth/profile', data);
     return response.data;
   },
+
+  changePassword: async (currentPassword, newPassword) => {
+    const response = await api.patch('/auth/password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    return response.data;
+  },
+
+  getSessions: async () => {
+    const response = await api.get('/auth/sessions');
+    return response.data;
+  },
+
+  deleteAllProjects: async () => {
+    const response = await api.delete('/auth/projects/all');
+    return response.data;
+  },
+
+  deleteAccount: async () => {
+    const response = await api.delete('/auth/account');
+    return response.data;
+  },
 };

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { User } from 'lucide-react';
 import { ProfilePopup } from './ProfilePopup';
 
 export const ProfileDropdown = () => {
@@ -42,4 +41,3 @@ export const ProfileDropdown = () => {
     </>
   );
 };
-

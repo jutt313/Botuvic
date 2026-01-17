@@ -17,6 +17,10 @@ class ResetPassword(BaseModel):
     token: str
     password: str
 
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
 class UserProfileUpdate(BaseModel):
     name: Optional[str] = None
     avatar_url: Optional[str] = None

@@ -4,7 +4,7 @@ from supabase import Client
 from database import get_supabase_client, get_supabase_admin_client
 from models import (
     UserRegister, UserLogin, ForgotPassword,
-    ResetPassword, UserResponse, TokenResponse, RegisterResponse,
+    ResetPassword, ChangePassword, UserResponse, TokenResponse, RegisterResponse,
     UserProfileUpdate
 )
 from typing import Union, Dict, Optional, List
@@ -620,6 +620,75 @@ async def remove_llm(llm_id: str, credentials: HTTPAuthorizationCredentials = De
     except Exception as e:
         log_error_with_context(logger, e, {"endpoint": "/llms", "llm_id": llm_id})
         raise HTTPException(status_code=500, detail=f"Failed to remove LLM: {str(e)}")
+
+@router.patch("/password")
+async def change_password(
+    password_data: ChangePassword,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Change user password"""
+    log_step(logger, "Change password request started")
+    
+    try:
+        supabase = get_supabase_client()
+        user_response = supabase.auth.get_user(credentials.credentials)
+        
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        # Set session with current token, then update password
+        try:
+            supabase.auth.set_session(access_token=credentials.credentials, refresh_token="")
+            supabase.auth.update_user({
+                "password": password_data.new_password
+            })
+        
+        log_step(logger, "Password updated successfully")
+        return {"message": "Password updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error_with_context(logger, e, {"endpoint": "/password"})
+        raise HTTPException(status_code=500, detail="Failed to change password")
+
+@router.get("/sessions")
+async def get_sessions(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get user sessions/tokens"""
+    log_step(logger, "Get sessions request started")
+    
+    try:
+        supabase = get_supabase_client()
+        user_response = supabase.auth.get_user(credentials.credentials)
+        
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        user_id = user_response.user.id
+        admin_client = get_supabase_admin_client()
+        
+        # Get sessions from database
+        sessions = admin_client.table("sessions").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        
+        sessions_list = []
+        if sessions.data:
+            for session in sessions.data:
+                sessions_list.append({
+                    "id": str(session.get("id")),
+                    "device_info": session.get("device_info", {}),
+                    "ip_address": session.get("ip_address"),
+                    "user_agent": session.get("user_agent"),
+                    "created_at": str(session.get("created_at")),
+                    "expires_at": str(session.get("expires_at")),
+                    "last_used_at": str(session.get("last_used_at")),
+                })
+        
+        log_step(logger, f"Retrieved {len(sessions_list)} sessions")
+        return {"sessions": sessions_list}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error_with_context(logger, e, {"endpoint": "/sessions"})
+        raise HTTPException(status_code=500, detail="Failed to get sessions")
 
 # Danger Zone Endpoints
 @router.delete("/projects/all")

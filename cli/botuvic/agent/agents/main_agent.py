@@ -384,7 +384,7 @@ Start monitoring with config for file watching, error detection, terminal monito
         self.storage = storage
         self.project_dir = project_dir
         self.search = search_engine
-        self.workflow = workflow
+            self.workflow = workflow
 
         # Initialize tools
         self.tools = AgentTools(
@@ -998,7 +998,7 @@ JSON:"""
                 for key, value in data.items():
                     if value and value != {} and value != [] and value != "null":
                         extracted[key] = value
-        except Exception as e:
+                except Exception as e:
             console.print(f"[dim]Extraction: {e}[/dim]")
 
         return extracted
@@ -1059,7 +1059,7 @@ JSON:"""
             # If backend is needed, it must be defined
             has_backend = bool(tech.get("backend"))
             has_database = bool(tech.get("database"))
-        else:
+                else:
             # If no backend needed, mark as satisfied
             has_backend = True
             has_database = True  # Database also optional if no backend
@@ -1309,11 +1309,11 @@ Does this look right? (yes/no)"""
 
 Ready to generate the project? (yes/no)"""
 
-        return {
+            return {
             "message": summary,
             "status": "awaiting_confirmation",
             "phase": "design"
-        }
+            }
 
     # =========================================================================
     # LLM HELPERS
