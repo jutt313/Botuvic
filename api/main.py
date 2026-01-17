@@ -38,7 +38,6 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     api_keys = relationship("APIKey", back_populates="user")
-    projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
 
 
 class APIKey(Base):
@@ -66,22 +65,6 @@ class Usage(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     
     api_key = relationship("APIKey", back_populates="usage")
-
-
-class Project(Base):
-    """Project model."""
-    __tablename__ = "projects"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    name = Column(String)
-    description = Column(String, nullable=True)
-    status = Column(String, default="active")  # active, completed, archived
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    user = relationship("User", back_populates="projects")
-
 
 
 # Create tables
@@ -329,27 +312,6 @@ def get_usage_stats(db: Session = Depends(get_db)):
         "last_activity": last_activity
     }
 
-
-
-
-
-@app.delete("/projects/{project_id}")
-def delete_project(project_id: int, db: Session = Depends(get_db)):
-    """
-    Delete a project.
-    
-    Response: {"deleted": true}
-    """
-    # TODO: Get user from auth token and verify ownership
-    
-    project = db.query(Project).filter_by(id=project_id).first()
-    if not project:
-        raise HTTPException(404, "Project not found")
-    
-    db.delete(project)
-    db.commit()
-    
-    return {"deleted": True, "project_id": project_id}
 
 
 @app.post("/admin/activate")

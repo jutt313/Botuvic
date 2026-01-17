@@ -287,3 +287,79 @@ async def update_project_status(
         })
         raise HTTPException(status_code=500, detail=f"Failed to update status: {str(e)}")
 
+
+@router.delete("/{project_id}")
+async def delete_project(
+    project_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Delete a single project"""
+    log_step(logger, "Delete project request started", {"project_id": project_id})
+    
+    try:
+        log_step(logger, "Getting Supabase admin client")
+        admin_client = get_supabase_admin_client()
+
+        log_step(logger, "Validating user token")
+        from supabase import create_client
+        from config import settings
+        supabase = create_client(settings.supabase_url, settings.supabase_anon_key)
+
+        user_response = supabase.auth.get_user(credentials.credentials)
+
+        if not user_response.user:
+            log_error_with_context(logger, Exception("Not authenticated"), {
+                "endpoint": "/projects/delete",
+                "project_id": project_id,
+                "error_type": "AuthenticationError"
+            })
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        user_id = user_response.user.id
+        log_step(logger, "Token validated", {"user_id": user_id})
+
+        # First verify project exists and belongs to user
+        log_step(logger, "Verifying project ownership", {"project_id": project_id, "user_id": user_id})
+        existing = admin_client.table("projects").select("id").eq("id", project_id).eq("user_id", user_id).execute()
+        
+        if not existing.data or len(existing.data) == 0:
+            log_error_with_context(logger, Exception("Project not found"), {
+                "endpoint": "/projects/delete",
+                "project_id": project_id,
+                "user_id": user_id,
+                "error_type": "NotFoundError"
+            })
+            raise HTTPException(status_code=404, detail="Project not found or you don't have permission to delete it")
+
+        # Delete conversation history for this project first
+        log_step(logger, "Deleting conversation history", {"project_id": project_id})
+        try:
+            admin_client.table("conversation_history").delete().eq("project_id", project_id).execute()
+        except Exception:
+            # Table might not exist or no history, continue
+            pass
+
+        # Delete the project
+        log_step(logger, "Deleting project from database", {"project_id": project_id})
+        result = admin_client.table("projects").delete().eq("id", project_id).eq("user_id", user_id).execute()
+
+        if not result.data:
+            log_error_with_context(logger, Exception("Failed to delete project"), {
+                "endpoint": "/projects/delete",
+                "project_id": project_id,
+                "error_type": "DatabaseError"
+            })
+            raise HTTPException(status_code=500, detail="Failed to delete project")
+
+        log_step(logger, "Project deleted successfully", {"project_id": project_id})
+        logger.info(f"STEP: Delete project complete")
+        return {"message": "Project deleted successfully", "project_id": project_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error_with_context(logger, e, {
+            "endpoint": "/projects/delete",
+            "project_id": project_id,
+            "error_type": type(e).__name__
+        })
+        raise HTTPException(status_code=500, detail=f"Failed to delete project: {str(e)}")

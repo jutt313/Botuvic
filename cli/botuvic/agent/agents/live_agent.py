@@ -9,6 +9,7 @@ import re
 import json
 import subprocess
 import threading
+import time
 from typing import Dict, Any, Optional, List, Callable
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,15 @@ from rich.panel import Panel
 
 from ..tools import AgentTools
 from ..live_mode.file_watcher import FileWatcher
+from ..live_mode.browser_tracker import BrowserTracker
+from ..live_mode.terminal_monitor import TerminalMonitor
+from ..live_mode.code_analyzer import CodeAnalyzer
+from ..live_mode.auto_fixer import AutoFixer
+from ..live_mode.test_runner import TestRunner
+from ..live_mode.test_generator import TestGenerator
+from ..live_mode.deployment_checker import DeploymentChecker
+from ..live_mode.session_logger import SessionLogger
+from ..live_mode.notification_manager import NotificationManager
 
 console = Console()
 
@@ -174,7 +184,7 @@ Always report to MainAgent:
         tools: AgentTools = None
     ):
         """
-        Initialize LiveAgent.
+        Initialize LiveAgent with all 9 monitoring components.
         
         Args:
             llm_client: LLM client for AI interactions
@@ -189,8 +199,23 @@ Always report to MainAgent:
 
         # Monitoring state
         self.is_monitoring = False
+        
+        # Core components (initialized on activation)
         self.file_watcher = None
-        self.error_server = None
+        self.browser_tracker = None
+        self.terminal_monitor = None
+        self.code_analyzer = None
+        
+        # Advanced components
+        self.auto_fixer = None
+        self.test_runner = None
+        self.test_generator = None
+        self.deployment_checker = None
+        self.session_logger = None
+        self.notification_manager = None
+        
+        # HTTP server for browser errors
+        self.error_server_thread = None
 
         # Tracking
         self.errors_detected = []
@@ -202,37 +227,127 @@ Always report to MainAgent:
         self.backup_dir = os.path.join(project_dir, ".botuvic", "backups")
         os.makedirs(self.backup_dir, exist_ok=True)
 
-        # System prompt is embedded in class (no file loading needed)
-        # SYSTEM_PROMPT is defined as class variable
-
     # =========================================================================
     # CAPABILITY 1: START/STOP MONITORING
     # =========================================================================
 
     def start_monitoring(self) -> Dict[str, Any]:
-        """Start all monitoring capabilities."""
+        """Start all 9 monitoring capabilities."""
         if self.is_monitoring:
             return {"success": False, "error": "Already monitoring"}
 
-        console.print("\n[cyan]LiveAgent: Starting monitoring...[/cyan]")
+        console.print("\n[bold #A855F7]🟢 LiveAgent: Activating monitoring...[/bold #A855F7]\n")
 
-        self.session_start = datetime.now()
-        self.is_monitoring = True
+        try:
+            self.session_start = datetime.now()
+            self.is_monitoring = True
 
-        # Start file watcher
-        self.file_watcher = FileWatcher(
-            project_dir=self.project_dir,
-            on_change_callback=self._on_file_change
-        )
-        watcher_result = self.file_watcher.start()
+            # 1. Code Analyzer (LLM-powered)
+            try:
+                self.code_analyzer = CodeAnalyzer(self.llm, self.storage, self.project_dir)
+                console.print("[dim]✓ Code analyzer initialized[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Code analyzer failed: {e}[/yellow]")
 
-        console.print("[green]✓[/green] LiveAgent is now monitoring your project")
+            # 2. File Watcher
+            try:
+                self.file_watcher = FileWatcher(
+                    project_dir=self.project_dir,
+                    on_change_callback=self._on_file_change
+                )
+                watcher_result = self.file_watcher.start()
+                if watcher_result.get("success"):
+                    console.print("[dim]✓ File watcher started[/dim]")
+                else:
+                    console.print(f"[yellow]⚠ File watcher: {watcher_result.get('error')}[/yellow]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ File watcher failed: {e}[/yellow]")
 
-        return {
-            "success": True,
-            "monitoring": True,
-            "file_watcher": watcher_result
-        }
+            # 3. Browser Tracker
+            try:
+                self.browser_tracker = BrowserTracker(self.project_dir, self._on_browser_error)
+                tracker_result = self.browser_tracker.inject_tracking_script()
+                if tracker_result.get("success"):
+                    console.print("[dim]✓ Browser tracker injected[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Browser tracker failed: {e}[/yellow]")
+
+            # 4. Terminal Monitor
+            try:
+                self.terminal_monitor = TerminalMonitor(self.project_dir, self._on_terminal_error)
+                console.print("[dim]✓ Terminal monitor ready[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Terminal monitor failed: {e}[/yellow]")
+
+            # 5. Auto Fixer
+            try:
+                self.auto_fixer = AutoFixer(self.project_dir, self.storage)
+                console.print("[dim]✓ Auto-fixer initialized[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Auto-fixer failed: {e}[/yellow]")
+
+            # 6. Test Runner
+            try:
+                self.test_runner = TestRunner(self.project_dir)
+                console.print("[dim]✓ Test runner ready[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Test runner failed: {e}[/yellow]")
+
+            # 7. Deployment Checker
+            try:
+                self.deployment_checker = DeploymentChecker(self.project_dir)
+                console.print("[dim]✓ Deployment checker ready[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Deployment checker failed: {e}[/yellow]")
+
+            # 8. Session Logger
+            try:
+                self.session_logger = SessionLogger(self.project_dir, self.storage)
+                self.session_logger.start_session()
+                console.print("[dim]✓ Session logger started[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Session logger failed: {e}[/yellow]")
+
+            # 9. Notification Manager
+            try:
+                self.notification_manager = NotificationManager()
+                console.print("[dim]✓ Notification manager ready[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Notification manager failed: {e}[/yellow]")
+
+            # 10. Test Generator (AI-powered)
+            try:
+                self.test_generator = TestGenerator(self.project_dir, self.llm, self.storage)
+                console.print("[dim]✓ Test generator ready[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Test generator failed: {e}[/yellow]")
+
+            # Start HTTP error server for browser errors
+            self._start_error_server()
+
+            # Show activation message
+            self._show_activation_message()
+
+            return {
+                "success": True,
+                "monitoring": True,
+                "components": {
+                    "file_watcher": self.file_watcher is not None,
+                    "browser_tracker": self.browser_tracker is not None,
+                    "terminal_monitor": self.terminal_monitor is not None,
+                    "code_analyzer": self.code_analyzer is not None,
+                    "auto_fixer": self.auto_fixer is not None,
+                    "test_runner": self.test_runner is not None,
+                    "deployment_checker": self.deployment_checker is not None,
+                    "session_logger": self.session_logger is not None,
+                    "notification_manager": self.notification_manager is not None
+                }
+            }
+
+        except Exception as e:
+            console.print(f"[red]✗ LiveAgent activation failed: {e}[/red]")
+            self.is_monitoring = False
+            return {"success": False, "error": str(e)}
 
     def stop_monitoring(self) -> Dict[str, Any]:
         """Stop all monitoring capabilities."""
@@ -260,22 +375,178 @@ Always report to MainAgent:
         }
 
     # =========================================================================
+    # ERROR CALLBACKS
+    # =========================================================================
+
+    def _on_browser_error(self, error_data: Dict[str, Any]):
+        """Handle browser console error from tracker."""
+        error_type = error_data.get("type", "error")
+        message = error_data.get("message", "Unknown error")
+        source = error_data.get("source", "Unknown")
+        
+        console.print(f"\n[bold red]🔴 Browser Error![/bold red]")
+        console.print(f"[red]Type:[/red] {error_type}")
+        console.print(f"[red]Message:[/red] {message}")
+        console.print(f"[dim]Source: {source}[/dim]\n")
+        
+        # Track error
+        self.errors_detected.append({
+            "source": "browser",
+            "type": error_type,
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # Log to session
+        if self.session_logger:
+            self.session_logger.log_error(error_data)
+
+    def _on_terminal_error(self, error_data: Dict[str, Any]):
+        """Handle terminal error from monitor."""
+        error_type = error_data.get("type", "error")
+        message = error_data.get("message", "Unknown error")
+        file_path = error_data.get("file", "Unknown")
+        line = error_data.get("line", "?")
+        
+        console.print(f"\n[bold red]🔴 Terminal Error![/bold red]")
+        console.print(f"[red]{error_type}:[/red] {message}")
+        console.print(f"[dim]Location: {file_path}:{line}[/dim]\n")
+        
+        # Track error
+        self.errors_detected.append({
+            "source": "terminal",
+            "type": error_type,
+            "message": message,
+            "file": file_path,
+            "line": line,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # Notify if available
+        if self.notification_manager:
+            self.notification_manager.add_notification(
+                priority="high",
+                notification_type="terminal_error",
+                title=f"Error: {error_type}",
+                message=message,
+                context={"file": file_path, "line": line}
+            )
+
+    def _start_error_server(self):
+        """Start HTTP server to receive browser errors."""
+        try:
+            from http.server import HTTPServer, BaseHTTPRequestHandler
+            
+            agent = self
+            
+            class ErrorHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    if self.path in ['/error', '/botuvic/console-error']:
+                        content_length = int(self.headers.get('Content-Length', 0))
+                        post_data = self.rfile.read(content_length)
+                        
+                        try:
+                            error_data = json.loads(post_data.decode('utf-8'))
+                            if agent.browser_tracker:
+                                agent.browser_tracker.handle_browser_error(error_data)
+                            
+                            self.send_response(200)
+                            self.send_header('Content-Type', 'application/json')
+                            self.send_header('Access-Control-Allow-Origin', '*')
+                            self.end_headers()
+                            self.wfile.write(b'{"success": true}')
+                        except Exception:
+                            self.send_response(500)
+                            self.end_headers()
+            else:
+                        self.send_response(404)
+                        self.end_headers()
+                
+                def do_OPTIONS(self):
+                    self.send_response(200)
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+                    self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+                    self.end_headers()
+                
+                def log_message(self, format, *args):
+                    pass  # Suppress logs
+            
+            server = HTTPServer(('localhost', 7777), ErrorHandler)
+            
+            def run_server():
+                console.print("[dim]✓ Error server started on http://localhost:7777[/dim]")
+                server.serve_forever()
+            
+            self.error_server_thread = threading.Thread(target=run_server, daemon=True)
+            self.error_server_thread.start()
+        
+        except Exception as e:
+            console.print(f"[yellow]⚠ Could not start error server: {e}[/yellow]")
+
+    def _show_activation_message(self):
+        """Show activation success message."""
+        message = """[bold green]✅ LiveAgent: ACTIVE[/bold green]
+
+I'm now watching your code in real-time:
+• [green]✓[/green] File changes → Auto-analyze for issues
+• [green]✓[/green] Browser errors → Catch runtime crashes
+• [green]✓[/green] Terminal output → Detect build errors
+• [green]✓[/green] Code analysis → LLM-powered suggestions
+
+[dim]Commands: 'run tests', 'check deploy', 'fix error', 'status'[/dim]
+"""
+        console.print(Panel(message, border_style="#A855F7"))
+
+    # =========================================================================
     # CAPABILITY 2: FILE WATCHING
     # =========================================================================
 
     def _on_file_change(self, file_path: str, event_type: str):
-        """Handle file change event."""
-        console.print(f"[dim]File {event_type}: {file_path}[/dim]")
+        """Handle file change event with LLM-powered analysis."""
+        console.print(f"[dim]📝 {file_path} {event_type}[/dim]")
 
-        # Analyze the changed file
-        analysis = self._analyze_file(file_path)
+        # Use CodeAnalyzer if available (LLM-powered)
+        if self.code_analyzer:
+            try:
+                analysis = self.code_analyzer.analyze_file(file_path)
+                if analysis.get("success") and analysis.get("issues"):
+                    self._handle_code_issues(file_path, analysis)
+            except Exception as e:
+                console.print(f"[dim]Analysis error: {e}[/dim]")
+        else:
+            # Fallback to basic analysis
+            analysis = self._analyze_file(file_path)
+            if analysis.get("errors"):
+                for error in analysis["errors"]:
+                    self._handle_error(error)
+        
+        # Log to session
+        if self.session_logger:
+            self.session_logger.log_file_change(file_path, event_type)
 
-        if analysis.get("errors"):
-            for error in analysis["errors"]:
-                self._handle_error(error)
+    def _handle_code_issues(self, file_path: str, analysis: Dict[str, Any]):
+        """Handle issues detected by CodeAnalyzer."""
+        issues = analysis.get("issues", [])
+        
+        # Filter by severity
+        critical = [i for i in issues if i.get("severity") == "critical"]
+        high = [i for i in issues if i.get("severity") == "high"]
+        
+        if critical or high:
+            console.print(f"\n[bold yellow]⚠️  Issues in {file_path}:[/bold yellow]\n")
+            
+            for issue in critical + high:
+                color = "red" if issue.get("severity") == "critical" else "yellow"
+                console.print(f"[{color}]●[/{color}] Line {issue.get('line', '?')}: {issue.get('message', 'Issue detected')}")
+                if issue.get("suggestion"):
+                    console.print(f"  [dim]→ {issue['suggestion']}[/dim]")
+            
+            # Track errors
+            self.errors_detected.extend(critical + high)
 
     def _analyze_file(self, file_path: str) -> Dict[str, Any]:
-        """Analyze a file for potential issues."""
+        """Fallback basic file analysis for potential issues."""
         full_path = os.path.join(self.project_dir, file_path)
 
         if not os.path.exists(full_path):
@@ -288,8 +559,6 @@ Always report to MainAgent:
             return {"errors": [{"type": "read_error", "message": str(e)}]}
 
         errors = []
-
-        # Check for common issues based on file type
         ext = Path(file_path).suffix
 
         if ext in ['.ts', '.tsx', '.js', '.jsx']:
@@ -378,10 +647,9 @@ Always report to MainAgent:
                 "description": "Comment out console.log"
             }
         }
-
         for fix_type, fix_info in fixes.items():
             if re.search(fix_info["pattern"], message) or re.search(fix_info["pattern"], code):
-                return {
+            return {
                     "type": fix_type,
                     "description": fix_info["description"],
                     "original": code,
@@ -596,8 +864,8 @@ Always report to MainAgent:
 
             # Display results
             self._display_test_results(test_results)
-
-            return {
+        
+        return {
                 "success": proc.returncode == 0,
                 "results": test_results,
                 "stdout": proc.stdout,
@@ -650,8 +918,8 @@ Always report to MainAgent:
         pytest_fail = re.search(r'(\d+) failed', output)
         if pytest_fail:
             failed = int(pytest_fail.group(1))
-        
-        return {
+            
+            return {
             "passed": passed,
             "failed": failed,
             "total": passed + failed,
@@ -732,7 +1000,7 @@ Always report to MainAgent:
             border_style="green" if ready else "red"
         ))
         
-        return {
+            return {
             "checks": checks,
             "score": score,
             "ready": ready
@@ -802,9 +1070,9 @@ Always report to MainAgent:
 
         # Save report
         self.storage.save("live_session_report", report)
-
+        
         return report
-
+    
     def get_status(self) -> Dict[str, Any]:
         """Get current monitoring status."""
         return {
@@ -850,7 +1118,7 @@ Always report to MainAgent:
                 error = self.errors_detected[-1]
                 fix = self._analyze_error_and_suggest_fix(error)
                 if fix:
-        return {
+                    return {
                         "message": f"Suggested fix: {fix.get('description')}\n{fix.get('original')} -> {fix.get('fixed')}",
                         "status": "awaiting_confirmation"
                     }
