@@ -1,49 +1,53 @@
 import React, { useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useProjects } from '@/hooks/useProjects';
 import { ListTodo } from 'lucide-react';
 
 export const TaskCompletionChart = () => {
   const { data: projects = [], isLoading } = useProjects();
 
-  // Prepare stacked bar data for each project
+  // Prepare stacked bar data: Phases, Tasks, Completed
   const chartData = useMemo(() => {
     if (!projects || projects.length === 0) return [];
 
-    // Get top 8 most recent projects for the chart
+    // Get top 8 most recent projects
     return [...projects]
       .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
       .slice(0, 8)
       .map(p => {
-        const progress = p.progress_percentage || 0;
-        const currentPhase = p.current_phase || 1;
         const totalPhases = p.total_phases || 1;
+        const currentPhase = p.current_phase || 1;
+        const progress = p.progress_percentage || 0;
+        
+        // Calculate values for stacking
         const phasesCompleted = Math.max(0, currentPhase - 1);
-        const phasesRemaining = totalPhases - currentPhase;
+        const tasksEstimate = totalPhases * 3; // Estimate ~3 tasks per phase
+        const tasksCompleted = Math.round((progress / 100) * tasksEstimate);
         
         return {
           name: p.name.length > 8 ? p.name.substring(0, 8) + '..' : p.name,
           fullName: p.name,
-          progress: progress,
-          remaining: 100 - progress,
-          phasesCompleted: phasesCompleted,
-          currentPhase: 1, // Current phase (always 1 for visualization)
-          phasesRemaining: phasesRemaining,
+          phases: totalPhases,
+          tasks: tasksEstimate,
+          completed: tasksCompleted,
+          currentPhase: currentPhase,
           totalPhases: totalPhases,
+          progress: progress,
           status: p.status || 'active',
         };
       });
   }, [projects]);
 
-  // Calculate summary stats
-  const stats = useMemo(() => {
-    if (!projects.length) return { avgProgress: 0, completed: 0 };
-    const totalProgress = projects.reduce((sum, p) => sum + (p.progress_percentage || 0), 0);
-    const avgProgress = Math.round(totalProgress / projects.length);
-    const completed = projects.filter(p => (p.status || '').toLowerCase() === 'complete').length;
-    return { avgProgress, completed };
-  }, [projects]);
+  // Calculate totals
+  const totals = useMemo(() => {
+    if (!chartData.length) return { phases: 0, tasks: 0, completed: 0 };
+    return chartData.reduce((acc, p) => ({
+      phases: acc.phases + p.phases,
+      tasks: acc.tasks + p.tasks,
+      completed: acc.completed + p.completed,
+    }), { phases: 0, tasks: 0, completed: 0 });
+  }, [chartData]);
 
   if (isLoading) {
     return (
@@ -91,16 +95,19 @@ export const TaskCompletionChart = () => {
           </CardTitle>
           <div className="flex gap-4 text-xs">
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
-              <span className="text-white/60">Done</span>
-            </div>
-            <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-              <span className="text-white/60">Remaining</span>
+              <span className="text-white/60">Phases</span>
+              <span className="text-white font-medium">{totals.phases}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-white/60">Avg</span>
-              <span className="text-white font-medium">{stats.avgProgress}%</span>
+              <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+              <span className="text-white/60">Tasks</span>
+              <span className="text-white font-medium">{totals.tasks}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+              <span className="text-white/60">Done</span>
+              <span className="text-white font-medium">{totals.completed}</span>
             </div>
           </div>
         </div>
@@ -120,12 +127,10 @@ export const TaskCompletionChart = () => {
               axisLine={false}
             />
             <YAxis 
-              domain={[0, 100]}
               stroke="#64748B"
               fontSize={10}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => `${v}%`}
             />
             <Tooltip
               contentStyle={{
@@ -135,36 +140,38 @@ export const TaskCompletionChart = () => {
                 fontSize: '12px',
               }}
               labelStyle={{ color: '#E2E8F0', fontWeight: 'bold', marginBottom: '4px' }}
-              formatter={(value, name, props) => {
-                if (name === 'progress') return [`${value}%`, 'Completed'];
-                if (name === 'remaining') return [`${value}%`, 'Remaining'];
-                return [value, name];
-              }}
               labelFormatter={(label, payload) => {
                 if (payload && payload[0]) {
                   const data = payload[0].payload;
-                  return `${data.fullName} (Phase ${data.currentPhase + data.phasesCompleted}/${data.totalPhases})`;
+                  return `${data.fullName}`;
                 }
                 return label;
               }}
             />
-            {/* Stacked bars: Progress (done) + Remaining */}
+            {/* Stacked: Phases (purple) + Tasks (cyan) + Completed (green) */}
             <Bar 
-              dataKey="progress" 
+              dataKey="phases" 
+              stackId="a"
+              fill="#A855F7"
+              radius={[0, 0, 0, 0]}
+              maxBarSize={40}
+              name="Phases"
+            />
+            <Bar 
+              dataKey="tasks" 
               stackId="a"
               fill="#06B6D4"
               radius={[0, 0, 0, 0]}
               maxBarSize={40}
-              name="progress"
+              name="Tasks"
             />
             <Bar 
-              dataKey="remaining" 
+              dataKey="completed" 
               stackId="a"
-              fill="#A855F7"
+              fill="#10B981"
               radius={[4, 4, 0, 0]}
               maxBarSize={40}
-              name="remaining"
-              fillOpacity={0.4}
+              name="Completed"
             />
           </BarChart>
         </ResponsiveContainer>
