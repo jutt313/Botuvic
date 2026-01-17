@@ -72,6 +72,73 @@ async def get_metrics(credentials: HTTPAuthorizationCredentials = Depends(securi
     """Get user metrics - no trailing slash"""
     return await _get_user_metrics(credentials)
 
+@app.get("/api/usage/stats")
+async def get_usage_stats(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get usage stats for dashboard cards"""
+    from supabase import create_client
+    from config import settings
+    from database import get_supabase_admin_client
+    from fastapi import HTTPException
+    from datetime import datetime
+
+    logger.info("STEP: Fetching usage stats for dashboard")
+    
+    try:
+        supabase = create_client(settings.supabase_url, settings.supabase_anon_key)
+        user_response = supabase.auth.get_user(credentials.credentials)
+
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        user_id = user_response.user.id
+        admin_client = get_supabase_admin_client()
+        
+        # Get projects count
+        projects_result = admin_client.table("projects").select("id, created_at, updated_at").eq("user_id", user_id).execute()
+        projects_built = len(projects_result.data) if projects_result.data else 0
+        
+        # Get last activity from most recent project update
+        last_activity = None
+        if projects_result.data:
+            # Find the most recent updated_at
+            dates = []
+            for p in projects_result.data:
+                if p.get("updated_at"):
+                    dates.append(p["updated_at"])
+                elif p.get("created_at"):
+                    dates.append(p["created_at"])
+            if dates:
+                last_activity = max(dates)
+        
+        # Try to get usage tracking data if table exists
+        total_usage_hours = 0
+        total_sessions = 0
+        try:
+            usage_result = admin_client.table("usage_tracking").select("*").eq("user_id", user_id).execute()
+            if usage_result.data:
+                total_sessions = len(usage_result.data)
+                # Sum up duration if available
+                for u in usage_result.data:
+                    if u.get("duration_minutes"):
+                        total_usage_hours += u["duration_minutes"] / 60
+        except Exception:
+            # Table might not exist yet, use fallback
+            pass
+        
+        logger.info(f"STEP: Usage stats retrieved - projects: {projects_built}, sessions: {total_sessions}")
+        
+        return {
+            "projects_built": projects_built,
+            "total_usage_hours": round(total_usage_hours, 1),
+            "total_sessions": total_sessions,
+            "last_activity": last_activity
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ERROR: Failed to fetch usage stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch usage stats: {str(e)}")
+
 # Include routers with logging
 logger.info("STEP: Registering API routers")
 app.include_router(auth_router)

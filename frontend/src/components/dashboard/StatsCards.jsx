@@ -1,10 +1,32 @@
 import React from 'react';
-import { Folder, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
-import { useProjects } from '@/hooks/useProjects';
+import { Rocket, Clock, Activity, Calendar } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/services/api';
+import { useAuthStore } from '@/store/authStore';
 import { formatDistanceToNow } from 'date-fns';
 
 export const StatsCards = () => {
-  const { data: projects = [], isLoading } = useProjects();
+  const { user } = useAuthStore();
+
+  // Fetch usage stats from API
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['usage-stats'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/usage/stats');
+        return response.data;
+      } catch (error) {
+        // Return mock data if API not ready
+        return {
+          projects_built: 0,
+          total_usage_hours: 0,
+          total_sessions: 0,
+          last_activity: null
+        };
+      }
+    },
+    refetchInterval: 30000, // Refresh every 30s
+  });
 
   if (isLoading) {
     return (
@@ -20,76 +42,51 @@ export const StatsCards = () => {
     );
   }
 
-  // Calculate stats
-  const totalProjects = projects.length;
-  
-  // Projects created this week
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const newThisWeek = projects.filter(p => {
-    const createdAt = p.created_at ? new Date(p.created_at) : null;
-    return createdAt && createdAt >= oneWeekAgo;
-  }).length;
+  const {
+    projects_built = 0,
+    total_usage_hours = 0,
+    total_sessions = 0,
+    last_activity = null
+  } = stats || {};
 
-  // Active tasks (projects with active/in_progress status)
-  const activeProjects = projects.filter(p => 
-    p.status === 'active' || p.status === 'in_progress' || !p.status
-  );
-  const activeTasksCount = activeProjects.length;
-  const avgProgress = activeProjects.length > 0
-    ? Math.round(
-        activeProjects.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / 
-        activeProjects.length
-      )
-    : 0;
-
-  // Recent activity (most recent updated_at)
-  const recentActivity = projects
-    .map(p => p.updated_at || p.created_at)
-    .filter(Boolean)
-    .sort((a, b) => new Date(b) - new Date(a))[0];
-
-  // Success rate (average phase completion)
-  const successRate = projects.length > 0
-    ? Math.round(
-        projects.reduce((sum, p) => {
-          const currentPhase = p.current_phase || 1;
-          const totalPhases = p.total_phases || 3;
-          return sum + (currentPhase / totalPhases) * 100;
-        }, 0) / projects.length
-      )
-    : 0;
+  // Format last activity
+  const lastActivityText = last_activity
+    ? formatDistanceToNow(new Date(last_activity), { addSuffix: true })
+    : 'No activity yet';
 
   const cards = [
     {
-      title: 'Projects',
-      value: totalProjects,
-      subtitle: `+${newThisWeek} this week`,
-      icon: Folder,
-      color: 'from-purple-500 to-purple-600',
+      title: 'Projects Built',
+      value: projects_built,
+      subtitle: 'Total projects created',
+      icon: Rocket,
+      iconColor: 'text-purple-400',
+      bgColor: 'bg-purple-500/10',
     },
     {
-      title: 'Active Tasks',
-      value: activeTasksCount,
-      subtitle: `${avgProgress}% avg progress`,
-      icon: CheckCircle2,
-      color: 'from-cyan-500 to-cyan-600',
-    },
-    {
-      title: 'Recent Activity',
-      value: recentActivity 
-        ? formatDistanceToNow(new Date(recentActivity), { addSuffix: true })
-        : 'No activity',
-      subtitle: 'Last update',
+      title: 'Total Usage',
+      value: total_usage_hours > 0 ? `${total_usage_hours}h` : '0',
+      subtitle: 'Time using BOTUVIC',
       icon: Clock,
-      color: 'from-green-500 to-green-600',
+      iconColor: 'text-cyan-400',
+      bgColor: 'bg-cyan-500/10',
     },
     {
-      title: 'Success Rate',
-      value: `${successRate}%`,
-      subtitle: 'Phase completion',
-      icon: TrendingUp,
-      color: 'from-pink-500 to-pink-600',
+      title: 'Total Sessions',
+      value: total_sessions,
+      subtitle: 'MCP activations',
+      icon: Activity,
+      iconColor: 'text-green-400',
+      bgColor: 'bg-green-500/10',
+    },
+    {
+      title: 'Last Activity',
+      value: lastActivityText,
+      subtitle: 'Most recent use',
+      icon: Calendar,
+      iconColor: 'text-pink-400',
+      bgColor: 'bg-pink-500/10',
+      isTime: true,
     },
   ];
 
@@ -100,18 +97,20 @@ export const StatsCards = () => {
         return (
           <div
             key={index}
-            className="glass rounded-lg p-5 border border-white/10 hover:border-white/20 transition-all duration-200"
+            className="glass rounded-lg p-5 border border-white/10 hover:border-white/20 transition-all duration-200 hover:scale-[1.02] group"
           >
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0">
-                <Icon className="w-6 h-6 text-white/80" />
+                <div className={`p-2.5 rounded-lg ${card.bgColor} group-hover:scale-110 transition-transform duration-200`}>
+                  <Icon className={`w-5 h-5 ${card.iconColor}`} strokeWidth={1.5} />
+                </div>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-base text-white/70 mb-2">{card.title}</p>
-                <p className="text-3xl font-bold text-white mb-2 truncate">
+                <p className="text-xs text-white/60 mb-1 uppercase tracking-wide">{card.title}</p>
+                <p className={`${card.isTime ? 'text-xl' : 'text-2xl'} font-bold text-white mb-1 truncate`}>
                   {card.value}
                 </p>
-                <p className="text-sm text-white/60">{card.subtitle}</p>
+                <p className="text-xs text-white/50">{card.subtitle}</p>
               </div>
             </div>
           </div>
